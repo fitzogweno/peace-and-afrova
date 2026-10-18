@@ -1,26 +1,58 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-ocean: #1B4D3E;
+  --color-ocean-light: #2A6B58;
+  --color-ocean-dark: #133A2E;
+  
+  --color-ivory: #F5F0E6;
+  --color-ivory-warm: #FAF7F0;
+  --color-ivory-deep: #EBE4D5;
+  
+  --color-gold: #C9A961;
+  --color-gold-light: #D9BE7F;
+  --color-gold-dark: #A88A45;
+  
+  --color-lagoon: #3D8B8B;
+  --color-lagoon-light: #5BA8A8;
+  --color-lagoon-dark: #2C6B6B;
+  
+  --color-charcoal: #1A1A1A;
+  --color-charcoal-soft: #4A4A4A;
+  --color-charcoal-muted: #8A8A8A;
+  
+  --color-line: #E5DFD3;
+
+  --font-serif: var(--font-cormorant), Georgia, serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+
+  --tracking-luxury: 0.3em;
+  --tracking-luxury-wide: 0.4em;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  body {
+    @apply bg-ivory text-charcoal;
+  }
+  h1, h2, h3, h4 {
+    @apply font-serif;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .btn-primary {
+    @apply inline-block px-8 py-4 bg-ocean text-ivory text-sm tracking-luxury uppercase hover:bg-ocean-light transition-colors duration-300;
+  }
+  .btn-gold {
+    @apply inline-block px-8 py-4 bg-gold text-ocean text-sm tracking-luxury uppercase hover:bg-gold-light transition-colors duration-300;
+  }
+  .btn-outline {
+    @apply inline-block px-8 py-4 border border-ivory/60 text-ivory text-sm tracking-luxury uppercase hover:bg-ivory/10 transition-colors duration-300;
+  }
+  .label-luxury {
+    @apply text-xs tracking-luxury uppercase text-lagoon;
+  }
+  .divider-gold {
+    @apply w-16 h-px bg-gold;
+  }
 }
