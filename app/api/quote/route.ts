@@ -4,15 +4,10 @@ import { createClient } from '@supabase/supabase-js'
 export async function POST(req: Request) {
   try {
     const body = await req.json()
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
-    // Generate a quote reference number (e.g., PA-2026-8921)
     const randomNum = Math.floor(1000 + Math.random() * 9000)
-    const ref = `PA-2026-${randomNum}`
+    const ref = `PA-${new Date().getFullYear()}-${randomNum}`
 
     // 1. Save the main Quotation
     const { data: quotation, error: quoteError } = await supabase
@@ -24,14 +19,15 @@ export async function POST(req: Request) {
         subtotal: body.subtotal,
         vat: body.vat,
         total: body.total,
-        status: 'draft'
+        status: 'draft',
+        quote_status: 'Draft'
       })
       .select()
       .single()
 
     if (quoteError) throw quoteError
 
-    // 2. Save the Line Items
+    // 2. Save the Line Items (The ATS services)
     const lineItems = body.items.map((item: any) => ({
       quotation_id: quotation.id,
       description: item.desc,
