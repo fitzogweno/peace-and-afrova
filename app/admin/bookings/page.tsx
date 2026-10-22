@@ -19,17 +19,19 @@ export default function BookingsOperations() {
     }
 
     async function fetchBookings() {
-      // Fetch confirmed bookings (anything that isn't 'Pending')
       const { data, error } = await supabase
         .from('bookings')
         .select(`
           *,
           quotations (
             quotation_items ( * ),
-            supplier_bookings ( * )
+            supplier_bookings ( * ),
+            enquiries (
+              customers ( full_name, email )
+            )
           )
         `)
-        .neq('payment_status', 'Pending') // This catches Partially Paid or Paid
+        .neq('payment_status', 'Pending')
         .order('created_at', { ascending: false })
       
       if (error) console.error("Error fetching operations:", error)
@@ -39,17 +41,34 @@ export default function BookingsOperations() {
     fetchBookings()
   }, [router])
 
-  const handleBookSupplier = async (quotationId: string, serviceDesc: string) => {
-    const confNumber = prompt(`Enter the ATS Confirmation Number for:\n${serviceDesc}`)
+  const handleBookSupplier = async (booking: any, item: any) => {
+    const confNumber = prompt(`Enter the ATS Confirmation Number for:\n${item.description}`)
     if (!confNumber) return
+
+    const driverName = prompt(`Enter the Driver's Name (e.g. Rishi):`)
+    const driverPhone = prompt(`Enter the Driver's Phone Number (e.g. +230 5740 0125):`)
+    const vehiclePlate = prompt(`Enter the Vehicle Plate Number (e.g. 1234 AB 56):`)
+
+    const clientEmail = booking.quotations?.enquiries?.customers?.email
+    const clientName = booking.quotations?.enquiries?.customers?.full_name
 
     const res = await fetch('/api/supplier-booking', {
       method: 'POST',
-      body: JSON.stringify({ quotationId, serviceDescription: serviceDesc, confirmationNumber: confNumber })
+      body: JSON.stringify({ 
+        quotationId: booking.quotation_id, 
+        serviceDescription: item.description, 
+        confirmationNumber: confNumber,
+        driverName: driverName,
+        driverPhone: driverPhone,
+        vehiclePlate: vehiclePlate,
+        bookingRef: booking.booking_ref,
+        clientEmail: clientEmail,
+        clientName: clientName
+      })
     })
 
     if (res.ok) {
-      alert("Supplier confirmed and saved!")
+      alert("Supplier confirmed, driver saved, and client notified!")
       window.location.reload()
     } else {
       alert("Failed to save confirmation.")
@@ -103,7 +122,6 @@ export default function BookingsOperations() {
               return (
                 <div key={booking.id} className="bg-white shadow-sm border border-[#E5DFD3] overflow-hidden">
                   
-                  {/* Booking Header */}
                   <div className="bg-[#FAF7F0] px-6 py-4 border-b border-[#E5DFD3] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                       <div className="flex items-center gap-3 mb-1">
@@ -119,7 +137,6 @@ export default function BookingsOperations() {
                     </div>
                   </div>
 
-                  {/* Operational Tasks */}
                   <div className="p-6">
                     <h4 className="text-xs tracking-widest uppercase text-[#1B4D3E] mb-4 font-medium flex items-center gap-2">
                       <FileText size={16} /> Supplier Services to Book
@@ -130,11 +147,9 @@ export default function BookingsOperations() {
                     ) : (
                       <div className="space-y-3">
                         {items.map((item: any) => {
-                          // Check if this item has a confirmation number saved
                           const savedBooking = supplierBookings.find((sb: any) => sb.service_description === item.description)
                           const isBooked = !!savedBooking
 
-                          // Skip blank items (like the accidental Rs 0 line)
                           if (!item.description) return null;
 
                           return (
@@ -145,16 +160,21 @@ export default function BookingsOperations() {
                               </div>
                               <div className="flex items-center gap-3">
                                 {isBooked ? (
-                                  <span className="flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full">
-                                    <CheckCircle size={14} /> Booked (Ref: {savedBooking.confirmation_number})
-                                  </span>
+                                  <div className="text-right">
+                                    <span className="flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full mb-1">
+                                      <CheckCircle size={14} /> Booked (Ref: {savedBooking.confirmation_number})
+                                    </span>
+                                    <div className="text-[10px] text-gray-500 uppercase tracking-wider">
+                                      Driver: {savedBooking.driver_name || 'N/A'} · Plate: {savedBooking.vehicle_plate || 'N/A'}
+                                    </div>
+                                  </div>
                                 ) : (
                                   <>
                                     <span className="flex items-center gap-1 text-xs font-medium text-orange-600 bg-orange-100 px-3 py-1 rounded-full">
                                       <Clock size={14} /> Pending
                                     </span>
                                     <button 
-                                      onClick={() => handleBookSupplier(booking.quotation_id, item.description)}
+                                      onClick={() => handleBookSupplier(booking, item)}
                                       className="text-sm text-[#3D8B8B] font-medium hover:text-[#1B4D3E] underline decoration-[#3D8B8B] underline-offset-4"
                                     >
                                       Mark as Booked

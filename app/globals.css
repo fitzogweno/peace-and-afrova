@@ -80,3 +80,33 @@
 .animate-review-marquee:hover {
   animation-play-state: paused;
 }
+/* Print Styles for Itinerary */
+@media print {
+  /* Hide navigation and buttons */
+  nav, .no-print, button {
+    display: none !important;
+  }
+  
+  /* Force background colors (for your brand colors) */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Page Setup */
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+  
+  /* Prevent breaking inside a card */
+  .print-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px solid #E5DFD3 !important;
+  }
+  
+  body {
+    background-color: white !important;
+  }
+}

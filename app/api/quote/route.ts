@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const randomNum = Math.floor(1000 + Math.random() * 9000)
     const ref = `PA-${new Date().getFullYear()}-${randomNum}`
 
-    // 1. Save the main Quotation
+    // 1. Save the main Quotation (with the chosen currency)
     const { data: quotation, error: quoteError } = await supabase
       .from('quotations')
       .insert({
@@ -19,6 +19,7 @@ export async function POST(req: Request) {
         subtotal: body.subtotal,
         vat: body.vat,
         total: body.total,
+        currency: body.currency, // <-- Saves MUR, USD, or EUR
         status: 'draft',
         quote_status: 'Draft'
       })
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
 
     if (quoteError) throw quoteError
 
-    // 2. Save the Line Items (The ATS services)
+    // 2. Save the Line Items
     const lineItems = body.items.map((item: any) => ({
       quotation_id: quotation.id,
       description: item.desc,

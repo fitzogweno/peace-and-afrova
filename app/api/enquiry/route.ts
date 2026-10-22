@@ -4,26 +4,24 @@ import { createClient } from '@supabase/supabase-js'
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
+    // 1. Insert the Customer
     const { data: customer, error: customerError } = await supabase
       .from('customers')
       .insert({
         full_name: body.name,
         email: body.email,
+        phone: body.phone,
+        country: body.country,
         source: 'website'
       })
       .select()
       .single()
 
-    if (customerError) {
-      console.error('CUSTOMER ERROR:', customerError)
-      return NextResponse.json({ error: customerError.message }, { status: 500 })
-    }
+    if (customerError) throw customerError
 
+    // 2. Insert the Enquiry
     const { error: enquiryError } = await supabase
       .from('enquiries')
       .insert({
@@ -31,17 +29,20 @@ export async function POST(req: Request) {
         travel_start: body.travel_start,
         party_size: parseInt(body.party_size),
         interests: body.interests,
+        has_hotel: body.has_hotel,
+        hotel_details: body.hotel_details,
+        hotel_budget: body.hotel_budget,
+        hotel_location: body.hotel_location,
+        hotel_vibe: body.hotel_vibe,
+        product_interest: body.product_interest,
         status: 'new'
       })
 
-    if (enquiryError) {
-      console.error('ENQUIRY ERROR:', enquiryError)
-      return NextResponse.json({ error: enquiryError.message }, { status: 500 })
-    }
+    if (enquiryError) throw enquiryError
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('SERVER CRASH:', error)
+    console.error('ENQUIRY API ERROR:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

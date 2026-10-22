@@ -1,13 +1,16 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 
-export default function BespokePage() {
+function BespokeForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  const activityParam = searchParams.get('activity') || ''
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -37,7 +40,6 @@ export default function BespokePage() {
 
   return (
     <main className="min-h-screen bg-ivory pb-24">
-      {/* HEADER */}
       <nav className="bg-ocean px-6 py-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/" className="text-ivory">
@@ -61,9 +63,16 @@ export default function BespokePage() {
             </p>
           </div>
 
-          {/* THE FORM */}
+          {activityParam && (
+            <div className="bg-[#FAF7F0] border border-[#C9A961] p-4 mb-8 text-center">
+              <p className="text-sm text-[#1B4D3E]">You are enquiring about: <strong className="font-serif text-lg">{activityParam}</strong></p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 md:p-12 shadow-sm border border-line">
             
+            <input type="hidden" name="product_interest" value={activityParam} />
+
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Full Name *</label>
@@ -77,8 +86,8 @@ export default function BespokePage() {
 
             <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">WhatsApp / Phone</label>
-                <input type="text" name="phone" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition" />
+                <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">WhatsApp Number *</label>
+                <input required type="tel" name="phone" placeholder="+230 ..." className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition" />
               </div>
               <div>
                 <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Country of Residence</label>
@@ -97,7 +106,63 @@ export default function BespokePage() {
               </div>
             </div>
 
-            <div>
+            {/* HOTEL PREFERENCES */}
+            <div className="border-t border-line pt-6 mt-6">
+              <h3 className="font-serif text-lg text-ocean mb-4">Hotel Preferences</h3>
+              
+              <div className="grid md:grid-cols-2 gap-6 mb-4">
+                <div>
+                  <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Do you have a hotel booked? *</label>
+                  <select required name="has_hotel" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition">
+                    <option value="no">No, please recommend one for me</option>
+                    <option value="yes">Yes, I will provide details below</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Hotel Name (If booked)</label>
+                  <input type="text" name="hotel_name" placeholder="e.g. Four Seasons" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition" />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Budget per Night</label>
+                  <select name="hotel_budget" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition">
+                    <option value="">Select budget...</option>
+                    <option value="luxury">Luxury (5-Star)</option>
+                    <option value="premium">Premium (4-Star)</option>
+                    <option value="boutique">Boutique</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Preferred Location</label>
+                  <select name="hotel_location" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition">
+                    <option value="">Any location</option>
+                    <option value="north">North Coast (Grand Baie)</option>
+                    <option value="west">West Coast (Flic en Flac / Le Morne)</option>
+                    <option value="east">East Coast (Belle Mare)</option>
+                    <option value="south">South Coast</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Hotel Vibe</label>
+                  <select name="hotel_vibe" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition">
+                    <option value="">Select vibe...</option>
+                    <option value="romantic">Romantic / Honeymoon</option>
+                    <option value="family">Family Friendly</option>
+                    <option value="wellness">Wellness & Spa</option>
+                    <option value="adventure">Adventure & Nature</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Hotel Address / Google Maps Link (If booked)</label>
+                <input type="text" name="hotel_details" placeholder="e.g. Anahita, Beau Champ, or paste a Google Maps link" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition" />
+              </div>
+            </div>
+
+            <div className="pt-6">
               <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">What are you looking for?</label>
               <textarea name="interests" rows={4} placeholder="E.g., Private catamaran, Le Morne hike, luxury transfers..." className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition resize-none"></textarea>
             </div>
@@ -111,5 +176,13 @@ export default function BespokePage() {
         </div>
       </section>
     </main>
+  )
+}
+
+export default function BespokePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <BespokeForm />
+    </Suspense>
   )
 }
