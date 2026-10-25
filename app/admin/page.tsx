@@ -89,6 +89,7 @@ export default function AdminDashboard() {
           <Link href="/admin" className="block text-[#C9A961]">Dashboard</Link>
           <Link href="/admin/bookings" className="block opacity-70 hover:opacity-100 transition">Operations & Bookings</Link>
           <Link href="/admin/finance" className="block opacity-70 hover:opacity-100 transition">Finance</Link>
+          <Link href="/admin/reviews" className="block opacity-70 hover:opacity-100 transition">Manage Reviews</Link>
           <Link href="/admin/rates" className="block opacity-70 hover:opacity-100 transition">Rate Catalog</Link>
         </nav>
         <button onClick={() => {
@@ -120,7 +121,6 @@ export default function AdminDashboard() {
           <div className="mb-12">
             <h2 className="font-serif text-3xl text-[#1B4D3E] mb-6">Search Results</h2>
             
-            {/* Show matching new enquiries */}
             {filteredEnquiries.length > 0 && (
               <div className="mb-8">
                 <h3 className="text-xs tracking-widest uppercase text-gray-500 mb-4">New Enquiries</h3>
@@ -143,7 +143,6 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* Show matching Bookings */}
             {filteredBookings.length > 0 && (
               <div>
                 <h3 className="text-xs tracking-widest uppercase text-gray-500 mb-4">Confirmed Bookings</h3>
@@ -174,7 +173,6 @@ export default function AdminDashboard() {
             )}
           </div>
         ) : (
-          /* Default View: Pending Payments and New Enquiries */
           <>
             {pendingBookings.length > 0 && (
               <div className="mb-12">
@@ -230,7 +228,6 @@ export default function AdminDashboard() {
                         <td className="p-4">
                           <div className="font-medium text-[#1B4D3E]">{enq.customers?.full_name || 'Unknown'}</div>
                           <div className="text-xs">{enq.customers?.email}</div>
-                          {/* SHOW PRODUCT INTEREST */}
                           {enq.product_interest && (
                             <div className="mt-1 inline-block bg-[#FAF7F0] text-[#C9A961] border border-[#E5DFD3] text-[10px] px-2 py-0.5 uppercase tracking-wider">
                               Interested: {enq.product_interest}

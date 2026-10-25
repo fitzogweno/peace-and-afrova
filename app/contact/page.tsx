@@ -23,12 +23,10 @@ export default function ContactPage() {
 
   return (
     <main className="min-h-screen bg-[#F5F0E6] font-sans text-[#1A1A1A] pb-24">
-      {/* HEADER */}
       <nav className="bg-[#1B4D3E] px-6 py-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="text-white">
-            <div className="text-xs tracking-[0.3em] uppercase opacity-90 font-light">Peace and Afrova</div>
-            <div className="text-xl font-serif tracking-wide">Group Company Ltd</div>
+          <Link href="/" className="flex items-center">
+            <img src="/logo-light.png" alt="Peace and Afrova" className="h-12 w-auto" />
           </Link>
           <div className="hidden md:flex items-center gap-12 text-white text-xs tracking-[0.2em] uppercase font-light">
             <Link href="/experiences" className="hover:text-[#C9A961] transition-colors">Experiences</Link>
@@ -38,7 +36,6 @@ export default function ContactPage() {
         </div>
       </nav>
 
-      {/* CONTACT CARDS */}
       <section className="pt-24 pb-16 px-6 text-center">
         <div className="max-w-3xl mx-auto">
           <Link href="/" className="inline-flex items-center gap-2 text-xs tracking-[0.2em] uppercase text-[#3D8B8B] hover:text-[#1B4D3E] transition mb-8">
@@ -73,7 +70,6 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* FAQ SECTION */}
       <section className="py-16 px-6 bg-white">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-12">
@@ -101,7 +97,6 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* SCROLLING REVIEWS SECTION */}
       <section className="py-20 bg-[#F5F0E6] overflow-hidden">
         <div className="text-center mb-12">
           <h2 className="font-serif text-3xl text-[#1B4D3E] mb-4">What Our Clients Say</h2>
@@ -109,7 +104,6 @@ export default function ContactPage() {
         </div>
         
         <div className="relative max-w-7xl mx-auto px-6">
-          {/* The marquee container */}
           <div className="flex gap-8 w-max animate-review-marquee">
             {reviews.map((review) => (
               <div key={review.id} className="w-[350px] flex-shrink-0 bg-white p-8 shadow-sm border border-[#E5DFD3]">
@@ -122,7 +116,6 @@ export default function ContactPage() {
                 </div>
               </div>
             ))}
-            {/* We duplicate the reviews so it loops seamlessly */}
             {reviews.map((review) => (
               <div key={`dup-${review.id}`} className="w-[350px] flex-shrink-0 bg-white p-8 shadow-sm border border-[#E5DFD3]">
                 <div className="flex gap-1 mb-4 text-[#C9A961]">
@@ -138,15 +131,11 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* CTA */}
       <section className="pt-16 px-6 text-center">
         <h3 className="font-serif text-2xl text-[#1B4D3E] mb-4">Ready to start planning?</h3>
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
           <Link href="/bespoke" className="btn-primary">Fill out the Bespoke Form</Link>
-          <Link 
-            href="/reviews/submit" 
-            className="inline-block px-8 py-4 border border-[#1B4D3E] text-[#1B4D3E] text-sm tracking-luxury uppercase hover:bg-[#1B4D3E] hover:text-[#F5F0E6] transition-colors duration-300"
-          >
+          <Link href="/reviews/submit" className="inline-block px-8 py-4 border border-[#1B4D3E] text-[#1B4D3E] text-sm tracking-luxury uppercase hover:bg-[#1B4D3E] hover:text-[#F5F0E6] transition-colors duration-300">
             Leave a Review
           </Link>
         </div>

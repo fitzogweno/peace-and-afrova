@@ -10,22 +10,15 @@ export default function PartnersPage() {
   const [success, setSuccess] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
-  // Rate Limiting Logic
   const [submissionCount, setSubmissionCount] = useState(0)
 
   useEffect(() => {
-    // Check how many times this browser has submitted today
     const today = new Date().toDateString()
     const storedData = localStorage.getItem('partner_submissions')
-    
     if (storedData) {
       const { date, count } = JSON.parse(storedData)
-      if (date === today) {
-        setSubmissionCount(count)
-      } else {
-        // Reset if it's a new day
-        localStorage.setItem('partner_submissions', JSON.stringify({ date: today, count: 0 }))
-      }
+      if (date === today) setSubmissionCount(count)
+      else localStorage.setItem('partner_submissions', JSON.stringify({ date: today, count: 0 }))
     }
   }, [])
 
@@ -39,7 +32,6 @@ export default function PartnersPage() {
     }
 
     setIsSubmitting(true)
-    
     const formData = new FormData(e.currentTarget)
     const data = {
       company_name: formData.get('company_name'),
@@ -58,7 +50,6 @@ export default function PartnersPage() {
       })
 
       if (res.ok) {
-        // Update the rate limit counter in local storage
         const today = new Date().toDateString()
         const newCount = submissionCount + 1
         localStorage.setItem('partner_submissions', JSON.stringify({ date: today, count: newCount }))
@@ -77,9 +68,8 @@ export default function PartnersPage() {
     <main className="min-h-screen bg-[#F5F0E6] font-sans text-[#1A1A1A] pb-24">
       <nav className="bg-[#1B4D3E] px-6 py-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="text-white">
-            <div className="text-xs tracking-[0.3em] uppercase opacity-90 font-light">Peace and Afrova</div>
-            <div className="text-xl font-serif tracking-wide">Group Company Ltd</div>
+          <Link href="/" className="flex items-center">
+            <img src="/logo-light.png" alt="Peace and Afrova" className="h-12 w-auto" />
           </Link>
           <div className="hidden md:flex items-center gap-12 text-white text-xs tracking-[0.2em] uppercase font-light">
             <Link href="/experiences" className="hover:text-[#C9A961] transition-colors">Experiences</Link>
@@ -107,7 +97,6 @@ export default function PartnersPage() {
 
       <section className="px-6">
         <div className="max-w-2xl mx-auto bg-white p-8 md:p-12 shadow-sm border border-[#E5DFD3]">
-          
           {errorMsg && (
             <div className="bg-red-50 text-red-600 p-4 mb-6 border border-red-200 text-sm text-center">
               {errorMsg}
@@ -157,7 +146,6 @@ export default function PartnersPage() {
                 </div>
               </div>
 
-              {/* PHONE NUMBER WITH COUNTRY CODE */}
               <div>
                 <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-2 font-medium">Phone Number</label>
                 <div className="flex gap-2">

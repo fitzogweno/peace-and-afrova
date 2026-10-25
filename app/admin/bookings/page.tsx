@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
-import { Clock, CheckCircle, FileText } from 'lucide-react'
+import { Clock, CheckCircle, FileText, Send } from 'lucide-react'
 
 export default function BookingsOperations() {
   const router = useRouter()
@@ -75,6 +75,22 @@ export default function BookingsOperations() {
     }
   }
 
+  const handleSendInvite = async (booking: any) => {
+    const clientEmail = booking.quotations?.enquiries?.customers?.email
+    const clientName = booking.customer_name
+
+    if (!clientEmail) return alert("No email found for this client.")
+    if (!confirm(`Send Portal Invite email to ${clientName}?`)) return
+
+    const res = await fetch('/api/send-invite', {
+      method: 'POST',
+      body: JSON.stringify({ clientEmail, clientName })
+    })
+
+    if (res.ok) alert("Portal Invite sent successfully!")
+    else alert("Failed to send invite.")
+  }
+
   const calculateGP = (items: any[]) => {
     if (!items || items.length === 0) return 0;
     const revenue = items.reduce((acc, item) => acc + (item.sell_price * item.pax), 0)
@@ -124,9 +140,17 @@ export default function BookingsOperations() {
                   
                   <div className="bg-[#FAF7F0] px-6 py-4 border-b border-[#E5DFD3] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                      <div className="flex items-center gap-3 mb-1">
+                      <div className="flex flex-wrap items-center gap-3 mb-1">
                         <span className="bg-[#1B4D3E] text-white text-xs px-2 py-1 rounded-sm tracking-wider">{booking.booking_ref}</span>
                         <span className="text-xs tracking-widest uppercase text-[#3D8B8B] font-medium">Confirmed Booking</span>
+                        
+                        {/* SEND PORTAL INVITE BUTTON */}
+                        <button 
+                          onClick={() => handleSendInvite(booking)}
+                          className="text-xs bg-[#C9A961] text-[#1B4D3E] px-3 py-1 uppercase tracking-wider hover:bg-white border border-[#C9A961] transition flex items-center gap-1"
+                        >
+                          <Send size={12} /> Send Portal Invite
+                        </button>
                       </div>
                       <h3 className="font-serif text-2xl text-[#1B4D3E]">{booking.customer_name}</h3>
                       <p className="text-sm text-gray-600">Travel Date: {booking.travel_start}</p>

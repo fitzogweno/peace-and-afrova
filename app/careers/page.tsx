@@ -3,13 +3,19 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Briefcase, MapPin, X } from 'lucide-react'
-import { supabase } from '../utils/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 export default function CareersPage() {
   const [jobs, setJobs] = useState<any[]>([])
   const [selectedJob, setSelectedJob] = useState<any>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+
+  // Initialize Supabase directly here to avoid path issues
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   useEffect(() => {
     async function fetchJobs() {
@@ -45,7 +51,6 @@ export default function CareersPage() {
 
   return (
     <main className="min-h-screen bg-[#F5F0E6] font-sans text-[#1A1A1A] pb-24">
-      {/* HEADER */}
       <nav className="bg-[#1B4D3E] px-6 py-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/" className="text-white">
@@ -92,7 +97,6 @@ export default function CareersPage() {
         </div>
       </section>
 
-      {/* APPLICATION MODAL */}
       {selectedJob && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-[#F5F0E6] w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 relative">

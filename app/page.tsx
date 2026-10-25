@@ -13,13 +13,12 @@ export default function Home() {
       {/* NAVIGATION */}
       <nav className="absolute top-0 left-0 right-0 z-50 px-6 py-6 mt-[32px]">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="text-ivory">
-            <div className="text-xs tracking-luxury uppercase opacity-90">
-              Peace and Afrova
-            </div>
-            <div className="text-lg font-serif tracking-wider">
-              Group Company Ltd
-            </div>
+          <Link href="/" className="flex items-center">
+            <img 
+              src="https://res.cloudinary.com/ey8jd5oe/image/upload/v1792926085/logo.png.png" 
+              alt="Peace and Afrova" 
+              className="h-12 w-auto" 
+            />
           </Link>
           
           <div className="hidden md:flex items-center gap-8 text-ivory text-xs tracking-luxury uppercase">
@@ -28,7 +27,6 @@ export default function Home() {
             <Link href="/about" className="hover:text-gold transition">{t('nav.about')}</Link>
             <Link href="/contact" className="hover:text-gold transition">{t('nav.contact')}</Link>
             
-            {/* GLOBAL PREFERENCES INTEGRATION */}
             <div className="border-l border-ivory/30 pl-8">
               <GlobalPreferences />
             </div>
@@ -36,15 +34,27 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* HERO */}
+      {/* HERO - CINEMATIC VIDEO BACKGROUND */}
       <section className="relative h-[calc(100vh-32px)] flex items-center justify-center overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=2000')",
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-ocean/70 via-ocean/50 to-ocean/85" />
+        
+        <div className="absolute inset-0 w-full h-full overflow-hidden">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            className="absolute inset-0 w-full h-full object-cover"
+            poster="https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=2000"
+          >
+            <source 
+              src="https://res.cloudinary.com/ey8jd5oe/video/upload/v1792921746/hero.mp4" 
+              type="video/mp4" 
+            />
+          </video>
+        </div>
+
+        <div className="absolute inset-0 bg-gradient-to-b from-ocean/70 via-ocean/40 to-ocean/80" />
 
         <div className="relative z-10 text-center text-ivory px-6 max-w-4xl mt-12">
           <div className="label-luxury text-gold mb-6">
@@ -142,10 +152,11 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             <div>
-              <div className="text-xs tracking-luxury uppercase text-gold mb-2">
-                Peace and Afrova
-              </div>
-              <div className="font-serif text-lg text-ivory">Group Company Ltd</div>
+              <img 
+                src="https://res.cloudinary.com/ey8jd5oe/image/upload/v1792926085/logo.png.png" 
+                alt="Peace and Afrova" 
+                className="h-16 w-auto mb-4" 
+              />
             </div>
             <div>
               <div className="text-xs tracking-luxury uppercase mb-4 text-ivory/50">Explore</div>
@@ -159,6 +170,7 @@ export default function Home() {
             <div>
               <div className="text-xs tracking-luxury uppercase mb-4 text-ivory/50">Legal</div>
               <ul className="space-y-2 text-sm">
+                <li><Link href="/portal/login" className="hover:text-gold transition">Client Portal</Link></li>
                 <li><Link href="/policies/terms" className="hover:text-gold transition">Terms</Link></li>
                 <li><Link href="/policies/privacy" className="hover:text-gold transition">Privacy</Link></li>
               </ul>

@@ -42,9 +42,8 @@ function BespokeForm() {
     <main className="min-h-screen bg-ivory pb-24">
       <nav className="bg-ocean px-6 py-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="text-ivory">
-            <div className="text-xs tracking-luxury uppercase opacity-90">Peace and Afrova</div>
-            <div className="text-lg font-serif tracking-wider">Group Company Ltd</div>
+          <Link href="/" className="flex items-center">
+            <img src="/logo-light.png" alt="Peace and Afrova" className="h-12 w-auto" />
           </Link>
         </div>
       </nav>
@@ -70,7 +69,6 @@ function BespokeForm() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 md:p-12 shadow-sm border border-line">
-            
             <input type="hidden" name="product_interest" value={activityParam} />
 
             <div className="grid md:grid-cols-2 gap-6">
@@ -106,10 +104,8 @@ function BespokeForm() {
               </div>
             </div>
 
-            {/* HOTEL PREFERENCES */}
             <div className="border-t border-line pt-6 mt-6">
               <h3 className="font-serif text-lg text-ocean mb-4">Hotel Preferences</h3>
-              
               <div className="grid md:grid-cols-2 gap-6 mb-4">
                 <div>
                   <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Do you have a hotel booked? *</label>
@@ -123,7 +119,6 @@ function BespokeForm() {
                   <input type="text" name="hotel_name" placeholder="e.g. Four Seasons" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition" />
                 </div>
               </div>
-
               <div className="grid md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Budget per Night</label>
@@ -138,9 +133,9 @@ function BespokeForm() {
                   <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Preferred Location</label>
                   <select name="hotel_location" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition">
                     <option value="">Any location</option>
-                    <option value="north">North Coast (Grand Baie)</option>
-                    <option value="west">West Coast (Flic en Flac / Le Morne)</option>
-                    <option value="east">East Coast (Belle Mare)</option>
+                    <option value="north">North Coast</option>
+                    <option value="west">West Coast</option>
+                    <option value="east">East Coast</option>
                     <option value="south">South Coast</option>
                   </select>
                 </div>
@@ -155,7 +150,6 @@ function BespokeForm() {
                   </select>
                 </div>
               </div>
-
               <div className="mt-4">
                 <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Hotel Address / Google Maps Link (If booked)</label>
                 <input type="text" name="hotel_details" placeholder="e.g. Anahita, Beau Champ, or paste a Google Maps link" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition" />

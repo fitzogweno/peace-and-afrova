@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
 import "./globals.css";
 import AnnouncementBar from "./components/AnnouncementBar";
+import WhatsAppButton from "./components/WhatsAppButton";
 import { AppProvider } from "./context/AppContext";
 
 const cormorant = Cormorant_Garamond({
@@ -31,6 +32,7 @@ export default function RootLayout({
         <AppProvider>
           <AnnouncementBar />
           {children}
+          <WhatsAppButton />
         </AppProvider>
       </body>
     </html>
