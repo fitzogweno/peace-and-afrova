@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
     if (customerError) throw customerError
 
-    // 2. Insert the Enquiry
+    // 2. Insert the Enquiry (With Flight & Dietary Data)
     const { error: enquiryError } = await supabase
       .from('enquiries')
       .insert({
@@ -35,6 +35,9 @@ export async function POST(req: Request) {
         hotel_location: body.hotel_location,
         hotel_vibe: body.hotel_vibe,
         product_interest: body.product_interest,
+        arrival_flight: body.arrival_flight,      // <-- NEW
+        departure_flight: body.departure_flight,  // <-- NEW
+        dietary_requirements: body.dietary_requirements, // <-- NEW
         status: 'new'
       })
 

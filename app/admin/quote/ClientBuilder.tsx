@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Trash2, Printer, Save, Percent, Send, Gift, FileText, DollarSign } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Printer, Save, Percent, Send, Gift, FileText } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../utils/supabase'
 import { useApp } from '../../context/AppContext'
@@ -23,8 +23,6 @@ function BuilderContent() {
   const [catalog, setCatalog] = useState<any[]>([])
   const [selectedServiceId, setSelectedServiceId] = useState('')
   const [discountPercent, setDiscountPercent] = useState<number>(0)
-  
-  // Currency State (Defaults to MUR)
   const [quoteCurrency, setQuoteCurrency] = useState('MUR')
 
   const [items, setItems] = useState([{ id: 1, desc: '', pax: 1, cost: 0, sell: 0 }])
@@ -67,20 +65,16 @@ function BuilderContent() {
   const removeItem = (id: number) => setItems(items.filter(item => item.id !== id))
   const updateItem = (id: number, field: string, value: any) => setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item))
 
-  // Base Math is always calculated in MUR
   const rawSubtotal = items.reduce((acc, item) => acc + (item.sell * item.pax), 0)
   const discountAmount = rawSubtotal * (discountPercent / 100)
   const discountedSubtotal = rawSubtotal - discountAmount
   const vat = discountedSubtotal * 0.15
   const totalMUR = discountedSubtotal + vat
 
-  // Display Helper for Currency Conversion
   const formatPrice = (amountInMUR: number) => {
     if (quoteCurrency === 'MUR') return `Rs ${amountInMUR.toLocaleString()}`
-    
     const rate = rates[quoteCurrency] || 1
     const converted = amountInMUR * rate
-    
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: quoteCurrency,
@@ -92,15 +86,7 @@ function BuilderContent() {
     setIsSaving(true)
     const res = await fetch('/api/quote', {
       method: 'POST',
-      body: JSON.stringify({ 
-        enquiry_id: enquiryId, 
-        travel_start: travelDate, 
-        subtotal: discountedSubtotal, 
-        vat, 
-        total: totalMUR, 
-        currency: quoteCurrency, // Save the chosen currency
-        items 
-      })
+      body: JSON.stringify({ enquiry_id: enquiryId, travel_start: travelDate, subtotal: discountedSubtotal, vat, total: totalMUR, currency: quoteCurrency, items })
     })
     if (res.ok) {
       const data = await res.json()
@@ -115,18 +101,10 @@ function BuilderContent() {
   async function handleSendEmail() {
     if (!savedRef) return alert("Please save the Proforma Invoice first.")
     setIsSending(true)
-    
     const res = await fetch('/api/send-quote', {
       method: 'POST',
-      body: JSON.stringify({ 
-        quoteRef: savedRef, 
-        clientEmail: customerEmail, 
-        clientName: customerName,
-        currency: quoteCurrency, // Pass currency to email
-        language: 'EN' 
-      })
+      body: JSON.stringify({ quoteRef: savedRef, clientEmail: customerEmail, clientName: customerName, currency: quoteCurrency, language: 'EN' })
     })
-    
     if (res.ok) alert(`Proforma Invoice successfully sent to ${customerEmail}!`)
     else alert('Failed to send email.')
     setIsSending(false)
@@ -143,22 +121,14 @@ function BuilderContent() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          
-          {/* CURRENCY SELECTOR */}
           <div className="flex items-center gap-2 bg-[#133A2E] border border-[#C9A961] rounded-sm px-3 py-1">
-            <DollarSign size={16} className="text-[#C9A961]" />
-            <select 
-              value={quoteCurrency} 
-              onChange={(e) => setQuoteCurrency(e.target.value)}
-              className="bg-transparent text-white text-sm focus:outline-none cursor-pointer"
-            >
+            <select value={quoteCurrency} onChange={(e) => setQuoteCurrency(e.target.value)} className="bg-transparent text-white text-sm focus:outline-none cursor-pointer">
               <option value="MUR" className="text-black">MUR (Rs)</option>
               <option value="USD" className="text-black">USD ($)</option>
               <option value="EUR" className="text-black">EUR (€)</option>
               <option value="GBP" className="text-black">GBP (£)</option>
             </select>
           </div>
-
           <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 bg-[#C9A961] text-[#1B4D3E] px-6 py-2 text-sm font-medium hover:bg-white transition disabled:opacity-50"><Save size={16} /> {isSaving ? 'Saving...' : 'Save'}</button>
           <button onClick={handleSendEmail} disabled={isSending || !savedRef} className="flex items-center gap-2 bg-[#3D8B8B] text-white px-6 py-2 text-sm font-medium hover:bg-[#2C6B6B] transition disabled:opacity-50"><Send size={16} /> {isSending ? 'Sending...' : 'Send to Client'}</button>
           <button onClick={() => window.print()} className="flex items-center gap-2 border border-white/30 text-white px-6 py-2 text-sm font-medium hover:bg-white/10 transition"><Printer size={16} /> Print</button>
@@ -233,7 +203,7 @@ function BuilderContent() {
         <table className="w-full text-left mb-8 border-collapse">
           <thead>
             <tr className="border-b-2 border-[#1B4D3E] text-xs tracking-widest uppercase text-[#1B4D3E]">
-              <th className="py-2 font-medium">Service Description</th><th className="py-2 font-medium text-center w-20">Pax</th><th className="py-2 font-medium text-right w-32 print:hidden">Net Cost (MUR)</th><th className="py-2 font-medium text-right w-32">Sell Price (MUR)</th><th className="py-2 font-medium text-right w-32">Total</th><th className="print:hidden w-10"></th>
+              <th className="py-2 font-medium">Service Description</th><th className="py-2 font-medium text-center w-20">Pax</th><th className="py-2 font-medium text-right w-32 print:hidden">Net Cost</th><th className="py-2 font-medium text-right w-32">Sell Price</th><th className="py-2 font-medium text-right w-32">Total</th><th className="print:hidden w-10"></th>
             </tr>
           </thead>
           <tbody>

@@ -42,8 +42,9 @@ function BespokeForm() {
     <main className="min-h-screen bg-ivory pb-24">
       <nav className="bg-ocean px-6 py-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center">
-            <img src="/logo-light.png" alt="Peace and Afrova" className="h-12 w-auto" />
+          <Link href="/" className="text-ivory">
+            <div className="text-xs tracking-luxury uppercase opacity-90">Peace and Afrova</div>
+            <div className="text-lg font-serif tracking-wider">Group Company Ltd</div>
           </Link>
         </div>
       </nav>
@@ -69,6 +70,7 @@ function BespokeForm() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 md:p-12 shadow-sm border border-line">
+            
             <input type="hidden" name="product_interest" value={activityParam} />
 
             <div className="grid md:grid-cols-2 gap-6">
@@ -104,8 +106,27 @@ function BespokeForm() {
               </div>
             </div>
 
+            {/* NEW FLIGHT & DIETARY FIELDS */}
+            <div className="grid md:grid-cols-2 gap-6 border-t border-line pt-6 mt-6">
+              <div>
+                <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Arrival Flight Number</label>
+                <input type="text" name="arrival_flight" placeholder="e.g. MK015" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition" />
+              </div>
+              <div>
+                <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Departure Flight Number</label>
+                <input type="text" name="departure_flight" placeholder="e.g. MK016" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Dietary Requirements</label>
+              <input type="text" name="dietary_requirements" placeholder="e.g. Vegan, Nut allergy, Halal" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition" />
+            </div>
+
+            {/* HOTEL PREFERENCES */}
             <div className="border-t border-line pt-6 mt-6">
               <h3 className="font-serif text-lg text-ocean mb-4">Hotel Preferences</h3>
+              
               <div className="grid md:grid-cols-2 gap-6 mb-4">
                 <div>
                   <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Do you have a hotel booked? *</label>
@@ -119,6 +140,7 @@ function BespokeForm() {
                   <input type="text" name="hotel_name" placeholder="e.g. Four Seasons" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition" />
                 </div>
               </div>
+
               <div className="grid md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Budget per Night</label>

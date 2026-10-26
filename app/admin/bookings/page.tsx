@@ -4,12 +4,15 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
-import { Clock, CheckCircle, FileText, Send } from 'lucide-react'
+import { Clock, CheckCircle, FileText, Send, Navigation } from 'lucide-react'
 
 export default function BookingsOperations() {
   const router = useRouter()
   const [bookings, setBookings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // UI Lock State: Tracks which item is currently being processed
+  const [processingItemId, setProcessingItemId] = useState<string | null>(null)
 
   useEffect(() => {
     const isLoggedIn = document.cookie.includes('admin_session=true')
@@ -27,6 +30,8 @@ export default function BookingsOperations() {
             quotation_items ( * ),
             supplier_bookings ( * ),
             enquiries (
+              arrival_flight,
+              departure_flight,
               customers ( full_name, email )
             )
           )
@@ -42,12 +47,26 @@ export default function BookingsOperations() {
   }, [router])
 
   const handleBookSupplier = async (booking: any, item: any) => {
+    // 1. Lock the UI for this specific item
+    setProcessingItemId(item.id)
+
     const confNumber = prompt(`Enter the ATS Confirmation Number for:\n${item.description}`)
-    if (!confNumber) return
+    if (!confNumber) {
+      setProcessingItemId(null) // Unlock if cancelled
+      return
+    }
 
     const driverName = prompt(`Enter the Driver's Name (e.g. Rishi):`)
+    if (driverName === null) { setProcessingItemId(null); return; }
+
     const driverPhone = prompt(`Enter the Driver's Phone Number (e.g. +230 5740 0125):`)
+    if (driverPhone === null) { setProcessingItemId(null); return; }
+
+    const driverEmail = prompt(`Enter the Driver's Email Address (for job assignment):`)
+    if (driverEmail === null) { setProcessingItemId(null); return; }
+
     const vehiclePlate = prompt(`Enter the Vehicle Plate Number (e.g. 1234 AB 56):`)
+    if (vehiclePlate === null) { setProcessingItemId(null); return; }
 
     const clientEmail = booking.quotations?.enquiries?.customers?.email
     const clientName = booking.quotations?.enquiries?.customers?.full_name
@@ -60,6 +79,7 @@ export default function BookingsOperations() {
         confirmationNumber: confNumber,
         driverName: driverName,
         driverPhone: driverPhone,
+        driverEmail: driverEmail,
         vehiclePlate: vehiclePlate,
         bookingRef: booking.booking_ref,
         clientEmail: clientEmail,
@@ -68,10 +88,12 @@ export default function BookingsOperations() {
     })
 
     if (res.ok) {
-      alert("Supplier confirmed, driver saved, and client notified!")
+      alert("Supplier booked! Client and Driver notified automatically.")
+      // We don't need to unlock here because the page reloads
       window.location.reload()
     } else {
       alert("Failed to save confirmation.")
+      setProcessingItemId(null) // Unlock on failure
     }
   }
 
@@ -109,6 +131,8 @@ export default function BookingsOperations() {
         <nav className="space-y-4 flex-1 text-sm font-light tracking-wide">
           <Link href="/admin" className="block opacity-70 hover:opacity-100 transition">Dashboard</Link>
           <Link href="/admin/bookings" className="block text-[#C9A961]">Operations & Bookings</Link>
+          <Link href="/admin/finance" className="block opacity-70 hover:opacity-100 transition">Finance</Link>
+          <Link href="/admin/reviews" className="block opacity-70 hover:opacity-100 transition">Manage Reviews</Link>
           <Link href="/admin/rates" className="block opacity-70 hover:opacity-100 transition">Rate Catalog</Link>
         </nav>
         <button onClick={() => {
@@ -134,6 +158,7 @@ export default function BookingsOperations() {
               const items = booking.quotations?.quotation_items || []
               const supplierBookings = booking.quotations?.supplier_bookings || []
               const grossProfit = calculateGP(items)
+              const arrivalFlight = booking.quotations?.enquiries?.arrival_flight
 
               return (
                 <div key={booking.id} className="bg-white shadow-sm border border-[#E5DFD3] overflow-hidden">
@@ -144,7 +169,6 @@ export default function BookingsOperations() {
                         <span className="bg-[#1B4D3E] text-white text-xs px-2 py-1 rounded-sm tracking-wider">{booking.booking_ref}</span>
                         <span className="text-xs tracking-widest uppercase text-[#3D8B8B] font-medium">Confirmed Booking</span>
                         
-                        {/* SEND PORTAL INVITE BUTTON */}
                         <button 
                           onClick={() => handleSendInvite(booking)}
                           className="text-xs bg-[#C9A961] text-[#1B4D3E] px-3 py-1 uppercase tracking-wider hover:bg-white border border-[#C9A961] transition flex items-center gap-1"
@@ -153,7 +177,14 @@ export default function BookingsOperations() {
                         </button>
                       </div>
                       <h3 className="font-serif text-2xl text-[#1B4D3E]">{booking.customer_name}</h3>
-                      <p className="text-sm text-gray-600">Travel Date: {booking.travel_start}</p>
+                      <div className="flex flex-col md:flex-row md:items-center gap-2 mt-1">
+                        <p className="text-sm text-gray-600">Travel Date: {booking.travel_start}</p>
+                        {arrivalFlight && (
+                          <span className="text-xs font-medium text-[#1B4D3E] bg-[#FAF7F0] border border-[#E5DFD3] px-2 py-1 flex items-center gap-1">
+                            <Navigation size={12} className="text-[#C9A961]" /> Arrival Flight: {arrivalFlight}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="text-right">
                       <div className="text-xs tracking-widest uppercase text-gray-500 mb-1">Gross Profit (Est.)</div>
@@ -167,43 +198,56 @@ export default function BookingsOperations() {
                     </h4>
                     
                     {items.length === 0 ? (
-                      <p className="text-sm text-red-500">No services found. Make sure you added items before saving the quote.</p>
+                      <p className="text-sm text-red-500">No services found.</p>
                     ) : (
                       <div className="space-y-3">
                         {items.map((item: any) => {
                           const savedBooking = supplierBookings.find((sb: any) => sb.service_description === item.description)
                           const isBooked = !!savedBooking
+                          const isProcessing = processingItemId === item.id
 
                           if (!item.description) return null;
 
                           return (
-                            <div key={item.id} className="flex items-center justify-between p-4 border border-[#E5DFD3] rounded-sm hover:bg-[#FAF7F0] transition">
+                            <div key={item.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-[#E5DFD3] rounded-sm hover:bg-[#FAF7F0] transition gap-4">
                               <div>
                                 <div className="font-medium text-[#1B4D3E]">{item.description}</div>
                                 <div className="text-xs text-gray-500">Pax: {item.pax} | Net Cost: Rs {item.supplier_cost.toLocaleString()}</div>
                               </div>
-                              <div className="flex items-center gap-3">
+                              <div className="flex flex-col md:items-end gap-2">
                                 {isBooked ? (
-                                  <div className="text-right">
-                                    <span className="flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full mb-1">
+                                  <>
+                                    <span className="flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full">
                                       <CheckCircle size={14} /> Booked (Ref: {savedBooking.confirmation_number})
                                     </span>
-                                    <div className="text-[10px] text-gray-500 uppercase tracking-wider">
+                                    <div className="text-[10px] text-gray-500 uppercase tracking-wider text-right">
                                       Driver: {savedBooking.driver_name || 'N/A'} · Plate: {savedBooking.vehicle_plate || 'N/A'}
                                     </div>
-                                  </div>
+                                    <div className={`text-[10px] font-bold uppercase tracking-wider mt-1 px-2 py-1 rounded-sm ${
+                                      savedBooking.job_status === 'Completed' ? 'text-green-700 bg-green-100' :
+                                      savedBooking.job_status === 'Picked Up' ? 'text-blue-700 bg-blue-100' :
+                                      savedBooking.job_status === 'En Route' ? 'text-orange-700 bg-orange-100' : 'text-gray-500 bg-gray-100'
+                                    }`}>
+                                      Status: {savedBooking.job_status || 'Pending'}
+                                    </div>
+                                  </>
                                 ) : (
-                                  <>
+                                  <div className="flex items-center gap-3">
                                     <span className="flex items-center gap-1 text-xs font-medium text-orange-600 bg-orange-100 px-3 py-1 rounded-full">
                                       <Clock size={14} /> Pending
                                     </span>
                                     <button 
                                       onClick={() => handleBookSupplier(booking, item)}
-                                      className="text-sm text-[#3D8B8B] font-medium hover:text-[#1B4D3E] underline decoration-[#3D8B8B] underline-offset-4"
+                                      disabled={isProcessing}
+                                      className={`text-sm font-medium underline underline-offset-4 transition ${
+                                        isProcessing 
+                                          ? 'text-gray-400 cursor-not-allowed' 
+                                          : 'text-[#3D8B8B] hover:text-[#1B4D3E]'
+                                      }`}
                                     >
-                                      Mark as Booked
+                                      {isProcessing ? 'Processing...' : 'Mark as Booked'}
                                     </button>
-                                  </>
+                                  </div>
                                 )}
                               </div>
                             </div>

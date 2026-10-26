@@ -181,6 +181,9 @@ export default function AdminDashboard() {
                   {pendingBookings.map((booking) => {
                     const paymentId = booking.payments?.[0]?.id || 'test-id'
                     const depositAmount = booking.payments?.[0]?.amount || (booking.total_amount * 0.5)
+                    const curr = booking.currency || 'MUR'
+                    const displayAmount = curr === 'USD' ? `$${(depositAmount / 45).toFixed(0)}` : curr === 'EUR' ? `€${(depositAmount / 49).toFixed(0)}` : `Rs ${depositAmount.toLocaleString()}`;
+
                     return (
                       <div key={booking.id} className="bg-white p-6 shadow-sm border-l-4 border-[#C9A961] flex flex-col md:flex-row justify-between items-center gap-4">
                         <div>
@@ -189,7 +192,7 @@ export default function AdminDashboard() {
                         </div>
                         <div className="text-right">
                           <div className="text-xs tracking-widest uppercase text-gray-500 mb-1">Deposit Due</div>
-                          <div className="text-xl font-serif text-[#1B4D3E]">Rs {depositAmount.toLocaleString()}</div>
+                          <div className="text-xl font-serif text-[#1B4D3E]">{displayAmount}</div>
                         </div>
                         <button onClick={() => handleConfirmPayment(booking.id, paymentId)} className="bg-[#1B4D3E] text-white px-6 py-3 text-xs uppercase tracking-widest hover:bg-[#C9A961] hover:text-[#1B4D3E] transition">
                           Confirm Deposit
