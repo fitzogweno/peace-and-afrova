@@ -4,15 +4,16 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
-import { Clock, CheckCircle, FileText, Send, Navigation } from 'lucide-react'
+import { Clock, CheckCircle, FileText, Send, Navigation, RefreshCw } from 'lucide-react'
 
 export default function BookingsOperations() {
   const router = useRouter()
   const [bookings, setBookings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   
-  // UI Lock State: Tracks which item is currently being processed
+  // UI Locks
   const [processingItemId, setProcessingItemId] = useState<string | null>(null)
+  const [trackingBookingRef, setTrackingBookingRef] = useState<string | null>(null)
 
   useEffect(() => {
     const isLoggedIn = document.cookie.includes('admin_session=true')
@@ -32,6 +33,8 @@ export default function BookingsOperations() {
             enquiries (
               arrival_flight,
               departure_flight,
+              flight_status,
+              estimated_arrival,
               customers ( full_name, email )
             )
           )
@@ -47,14 +50,10 @@ export default function BookingsOperations() {
   }, [router])
 
   const handleBookSupplier = async (booking: any, item: any) => {
-    // 1. Lock the UI for this specific item
     setProcessingItemId(item.id)
 
     const confNumber = prompt(`Enter the ATS Confirmation Number for:\n${item.description}`)
-    if (!confNumber) {
-      setProcessingItemId(null) // Unlock if cancelled
-      return
-    }
+    if (!confNumber) { setProcessingItemId(null); return; }
 
     const driverName = prompt(`Enter the Driver's Name (e.g. Rishi):`)
     if (driverName === null) { setProcessingItemId(null); return; }
@@ -89,12 +88,37 @@ export default function BookingsOperations() {
 
     if (res.ok) {
       alert("Supplier booked! Client and Driver notified automatically.")
-      // We don't need to unlock here because the page reloads
       window.location.reload()
     } else {
       alert("Failed to save confirmation.")
-      setProcessingItemId(null) // Unlock on failure
+      setProcessingItemId(null)
     }
+  }
+
+  const handleTrackFlight = async (bookingRef: string, flightNumber: string) => {
+    if (!flightNumber) return alert("No flight number provided for this booking.")
+    
+    setTrackingBookingRef(bookingRef)
+    
+    try {
+      const res = await fetch('/api/track-flight', {
+        method: 'POST',
+        body: JSON.stringify({ flightNumber, bookingRef })
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        alert(`Flight Updated: ${data.status} (ETA: ${new Date(data.estimatedArrival).toLocaleTimeString()})`)
+        window.location.reload()
+      } else {
+        const errorData = await res.json()
+        alert(`Failed to track flight: ${errorData.error}`)
+      }
+    } catch (err) {
+      alert("Error connecting to flight tracking API.")
+    }
+    
+    setTrackingBookingRef(null)
   }
 
   const handleSendInvite = async (booking: any) => {
@@ -159,6 +183,9 @@ export default function BookingsOperations() {
               const supplierBookings = booking.quotations?.supplier_bookings || []
               const grossProfit = calculateGP(items)
               const arrivalFlight = booking.quotations?.enquiries?.arrival_flight
+              const flightStatus = booking.quotations?.enquiries?.flight_status
+              const estimatedArrival = booking.quotations?.enquiries?.estimated_arrival
+              const isTracking = trackingBookingRef === booking.booking_ref
 
               return (
                 <div key={booking.id} className="bg-white shadow-sm border border-[#E5DFD3] overflow-hidden">
@@ -179,12 +206,33 @@ export default function BookingsOperations() {
                       <h3 className="font-serif text-2xl text-[#1B4D3E]">{booking.customer_name}</h3>
                       <div className="flex flex-col md:flex-row md:items-center gap-2 mt-1">
                         <p className="text-sm text-gray-600">Travel Date: {booking.travel_start}</p>
-                        {arrivalFlight && (
-                          <span className="text-xs font-medium text-[#1B4D3E] bg-[#FAF7F0] border border-[#E5DFD3] px-2 py-1 flex items-center gap-1">
-                            <Navigation size={12} className="text-[#C9A961]" /> Arrival Flight: {arrivalFlight}
-                          </span>
-                        )}
                       </div>
+
+                      {/* FLIGHT TRACKING SECTION */}
+                      {arrivalFlight && (
+                        <div className="flex flex-wrap items-center gap-2 mt-3">
+                          <span className="text-xs font-medium text-[#1B4D3E] bg-[#FAF7F0] border border-[#E5DFD3] px-2 py-1 flex items-center gap-1">
+                            <Navigation size={12} className="text-[#C9A961]" /> Flight: {arrivalFlight}
+                          </span>
+                          
+                          <button
+                            onClick={() => handleTrackFlight(booking.booking_ref, arrivalFlight)}
+                            disabled={isTracking}
+                            className="text-xs bg-[#C9A961] text-[#1B4D3E] px-3 py-1 uppercase tracking-wider hover:bg-white border border-[#C9A961] transition disabled:opacity-50 flex items-center gap-1"
+                          >
+                            <RefreshCw size={12} className={isTracking ? 'animate-spin' : ''} /> 
+                            {isTracking ? 'Tracking...' : 'Track Flight'}
+                          </button>
+
+                          {flightStatus && (
+                            <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 border border-blue-200">
+                              Status: {flightStatus} 
+                              {estimatedArrival && ` | ETA: ${new Date(estimatedArrival).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                     </div>
                     <div className="text-right">
                       <div className="text-xs tracking-widest uppercase text-gray-500 mb-1">Gross Profit (Est.)</div>

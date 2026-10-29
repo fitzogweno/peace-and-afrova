@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
-import { FileText, Map, CheckCircle, Clock, Download, ArrowRight } from 'lucide-react'
+import { FileText, Map, CheckCircle, Download, ArrowRight, ConciergeBell, X } from 'lucide-react'
 
 function HubContent() {
   const searchParams = useSearchParams()
@@ -13,6 +13,12 @@ function HubContent() {
   const [quote, setQuote] = useState<any>(null)
   const [booking, setBooking] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+
+  // Concierge State
+  const [showConcierge, setShowConcierge] = useState(false)
+  const [requestType, setRequestType] = useState('Restaurant Reservation')
+  const [requestDetails, setRequestDetails] = useState('')
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false)
 
   useEffect(() => {
     if (!quoteRef) return
@@ -38,6 +44,26 @@ function HubContent() {
     }
     fetchData()
   }, [quoteRef])
+
+  async function handleConciergeSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setIsSubmittingRequest(true)
+    
+    await fetch('/api/concierge-request', {
+      method: 'POST',
+      body: JSON.stringify({
+        bookingRef: quote.booking_ref,
+        customerName: quote.enquiries?.customers?.full_name || 'Valued Client',
+        requestType: requestType,
+        requestDetails: requestDetails
+      })
+    })
+
+    setIsSubmittingRequest(false)
+    setShowConcierge(false)
+    setRequestDetails('')
+    alert("Concierge request sent! Our team will contact you shortly.")
+  }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-[#1B4D3E]">Loading your private portal...</div>
   if (!quote) return <div className="min-h-screen flex items-center justify-center text-red-600">Link invalid or expired.</div>
@@ -89,14 +115,13 @@ function HubContent() {
         </div>
 
         {/* DOCUMENTS LIST */}
-        <div className="bg-white shadow-sm border border-[#E5DFD3]">
+        <div className="bg-white shadow-sm border border-[#E5DFD3] mb-8">
           <div className="p-6 border-b border-[#E5DFD3] bg-[#FAF7F0] flex justify-between items-end">
             <h2 className="font-serif text-2xl text-[#1B4D3E]">Your Travel Documents</h2>
             <span className="text-xs text-gray-500 italic">Confidential</span>
           </div>
           
           <div className="divide-y divide-[#E5DFD3]">
-            
             {/* 1. The Quote */}
             <div className="p-6 flex flex-col md:flex-row justify-between items-center gap-4 hover:bg-[#FAF7F0] transition">
               <div className="flex items-center gap-4">
@@ -155,9 +180,63 @@ function HubContent() {
                 </Link>
               </div>
             )}
-
           </div>
         </div>
+
+        {/* CONCIERGE REQUEST BUTTON */}
+        {isDepositPaid && (
+          <div className="mt-8 bg-[#1B4D3E] p-6 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+              <ConciergeBell className="text-[#C9A961]" size={32} />
+              <div>
+                <h3 className="font-serif text-xl text-white">Need anything during your stay?</h3>
+                <p className="text-sm text-white/70">Request a restaurant, extra transfer, or activity.</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setShowConcierge(true)}
+              className="bg-[#C9A961] text-[#1B4D3E] px-6 py-3 text-sm uppercase tracking-widest hover:bg-white transition whitespace-nowrap"
+            >
+              Make a Request
+            </button>
+          </div>
+        )}
+
+        {/* CONCIERGE MODAL */}
+        {showConcierge && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-[#F5F0E6] w-full max-w-md p-8 shadow-2xl relative">
+              <button onClick={() => setShowConcierge(false)} className="absolute top-4 right-4 text-gray-500 hover:text-black">
+                <X size={24} />
+              </button>
+              <h3 className="font-serif text-2xl text-[#1B4D3E] mb-6">Concierge Request</h3>
+              <form onSubmit={handleConciergeSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Request Type</label>
+                  <select value={requestType} onChange={(e) => setRequestType(e.target.value)} className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961]">
+                    <option value="Restaurant Reservation">Restaurant Reservation</option>
+                    <option value="Extra Transfer">Extra Transfer</option>
+                    <option value="Excursion/Tour">Excursion / Tour</option>
+                    <option value="Special Occasion">Special Occasion</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Details</label>
+                  <textarea required value={requestDetails} onChange={(e) => setRequestDetails(e.target.value)} rows={4} placeholder="E.g., Table for 2 at Le Château on Thursday at 8pm." className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961]"></textarea>
+                </div>
+                <div className="flex gap-4 pt-4">
+                  <button type="submit" disabled={isSubmittingRequest} className="flex-1 bg-[#1B4D3E] text-white py-3 text-xs uppercase tracking-widest hover:bg-[#C9A961] hover:text-[#1B4D3E] transition disabled:opacity-50">
+                    {isSubmittingRequest ? 'Sending...' : 'Send Request'}
+                  </button>
+                  <button type="button" onClick={() => setShowConcierge(false)} className="flex-1 border border-[#1B4D3E] text-[#1B4D3E] py-3 text-xs uppercase tracking-widest hover:bg-white transition">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

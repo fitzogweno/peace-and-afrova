@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../utils/supabase'
-import { Search, Hotel, CheckCircle } from 'lucide-react'
+import { Search, Hotel, Bell } from 'lucide-react'
 
 export default function AdminDashboard() {
   const router = useRouter()
   const [enquiries, setEnquiries] = useState<any[]>([])
   const [allBookings, setAllBookings] = useState<any[]>([])
   const [pendingBookings, setPendingBookings] = useState<any[]>([])
+  const [conciergeRequests, setConciergeRequests] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -22,7 +23,7 @@ export default function AdminDashboard() {
     }
 
     async function fetchData() {
-      // 1. Fetch New Enquiries (not yet quoted)
+      // 1. Fetch New Enquiries
       const { data: enqData } = await supabase
         .from('enquiries')
         .select(`*, customers (full_name, email, phone), quotations!left(id)`)
@@ -31,7 +32,7 @@ export default function AdminDashboard() {
       
       if (enqData) setEnquiries(enqData)
 
-      // 2. Fetch ALL Bookings (for the global search)
+      // 2. Fetch ALL Bookings
       const { data: bookData } = await supabase
         .from('bookings')
         .select(`*, quotations ( enquiries ( customers ( full_name, email ) ) )`)
@@ -46,6 +47,15 @@ export default function AdminDashboard() {
         .eq('payment_status', 'Pending')
       
       if (pendingData) setPendingBookings(pendingData)
+
+      // 4. Fetch Concierge Requests
+      const { data: conciergeData } = await supabase
+        .from('concierge_requests')
+        .select('*')
+        .eq('status', 'Pending')
+        .order('created_at', { ascending: false })
+      
+      if (conciergeData) setConciergeRequests(conciergeData)
       
       setLoading(false)
     }
@@ -62,6 +72,11 @@ export default function AdminDashboard() {
       alert("Payment Confirmed!")
       window.location.reload() 
     }
+  }
+
+  async function handleResolveConcierge(requestId: string) {
+    await supabase.from('concierge_requests').update({ status: 'Resolved' }).eq('id', requestId)
+    window.location.reload()
   }
 
   // Filter enquiries based on search
@@ -174,6 +189,33 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <>
+            {/* CONCIERGE REQUESTS */}
+            {conciergeRequests.length > 0 && (
+              <div className="mb-12">
+                <h2 className="font-serif text-3xl text-[#1B4D3E] mb-6 flex items-center gap-2">
+                  <Bell className="text-[#C9A961]" /> Active Concierge Requests
+                </h2>
+                <div className="grid gap-4">
+                  {conciergeRequests.map((req) => (
+                    <div key={req.id} className="bg-white p-6 shadow-sm border-l-4 border-blue-500 flex flex-col md:flex-row justify-between items-center gap-4">
+                      <div>
+                        <div className="text-xs tracking-widest uppercase text-gray-500 mb-1">{req.booking_ref} · {req.request_type}</div>
+                        <div className="font-medium text-[#1B4D3E]">{req.customer_name}</div>
+                        <p className="text-sm text-gray-600 mt-2 italic bg-[#FAF7F0] p-2 border border-[#E5DFD3]">"{req.request_details}"</p>
+                      </div>
+                      <button 
+                        onClick={() => handleResolveConcierge(req.id)} 
+                        className="bg-[#1B4D3E] text-white px-6 py-3 text-xs uppercase tracking-widest hover:bg-green-600 transition whitespace-nowrap"
+                      >
+                        Mark Resolved
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* DEPOSITS TO CONFIRM */}
             {pendingBookings.length > 0 && (
               <div className="mb-12">
                 <h2 className="font-serif text-3xl text-[#1B4D3E] mb-6">Deposits to Confirm</h2>
