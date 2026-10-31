@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { sendWhatsAppMessage } from '../../../lib/whatsapp'
 
 export async function POST(req: Request) {
   try {
@@ -36,8 +37,15 @@ export async function POST(req: Request) {
       `,
     })
 
+    // 3. Alert Admin via WhatsApp
+    const adminWhatsApp = "+23057400125" // Your business WhatsApp number
+    const waMessage = `🌟 *New Concierge Request*\n\nClient: ${customerName}\nRef: ${bookingRef}\nType: ${requestType}\n\nMessage: "${requestDetails}"`
+    
+    sendWhatsAppMessage(adminWhatsApp, waMessage)
+
     return NextResponse.json({ success: true })
   } catch (error: any) {
+    console.error("CONCIERGE REQUEST ERROR:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

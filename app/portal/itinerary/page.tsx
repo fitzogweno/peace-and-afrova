@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../utils/supabase'
 import { Printer, MapPin, CheckCircle, Clock, Compass, Phone, Mail, Car, CloudSun, MessageCircle, Lock } from 'lucide-react'
+import QRCode from 'react-qr-code'
 
 function ItineraryContent() {
   const searchParams = useSearchParams()
@@ -55,11 +56,15 @@ function ItineraryContent() {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-[#1B4D3E]">Loading...</div>
   if (!booking) return <div className="min-h-screen flex items-center justify-center text-red-600">Itinerary not found.</div>
 
-  const items = (booking.quotations?.quotation_items || []).filter((item: any) => item.description && item.description.trim() !== '')
-  const supplierBookings = booking.quotations?.supplier_bookings || []
-  const hotelDetails = booking.quotations?.enquiries?.hotel_details || 'To be confirmed'
+  // Safely handle Supabase joins that might return arrays
+  const quotation = Array.isArray(booking.quotations) ? booking.quotations[0] : booking.quotations;
+  const enquiries = quotation?.enquiries;
+  const enquiry = Array.isArray(enquiries) ? enquiries[0] : enquiries;
   
-  // Use the first confirmed supplier booking as the primary driver card
+  const items = (quotation?.quotation_items || []).filter((item: any) => item.description && item.description.trim() !== '')
+  const supplierBookings = quotation?.supplier_bookings || []
+  const hotelDetails = enquiry?.hotel_details || 'To be confirmed'
+  
   const primaryTransfer = supplierBookings.length > 0 ? supplierBookings[0] : null
 
   const destination = hotelDetails === 'To be confirmed' || !hotelDetails ? 'Port Louis, Mauritius' : hotelDetails
@@ -112,7 +117,7 @@ function ItineraryContent() {
 
         <div className="grid md:grid-cols-2 gap-6 mb-10">
           {weather && (
-            <div className="bg-[#1B4D3E] text-white p-6 flex items-center justify-between">
+            <div className="bg-[#1B4D3E] text-white p-6 flex items-center justify-between print:border print:border-[#1B4D3E]">
               <div>
                 <div className="text-xs tracking-widest uppercase text-[#C9A961] mb-1 font-medium">Mauritius Weather</div>
                 <div className="text-2xl font-serif">{Math.round(weather.main.temp)}°C · {weather.weather[0].main}</div>
@@ -138,6 +143,7 @@ function ItineraryContent() {
                     <a 
                       href={`https://wa.me/${primaryTransfer.driver_phone.replace(/\s+/g, '')}`} 
                       target="_blank"
+                      rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2 bg-green-600 text-white py-2 text-xs uppercase tracking-widest hover:bg-green-700 transition"
                     >
                       <MessageCircle size={14} /> Chat with Driver on WhatsApp
@@ -176,18 +182,16 @@ function ItineraryContent() {
           </div>
           
           {items.map((item: any, index: number) => {
-            const confirmation = supplierBookings.find((sb: any) => sb.service_description === item.description)
+            const savedBooking = supplierBookings.find((sb: any) => sb.service_description === item.description)
             return (
-              <div key={item.id} className="relative print-card pl-6 border-l-2 border-[#C9A961]">
-                <div className="absolute w-3 h-3 bg-[#1B4D3E] rounded-full -left-[7px] top-2" />
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-3">
-                  <div>
-                    <div className="text-xs tracking-widest uppercase text-gray-400 mb-1">Service {index + 1}</div>
-                    <h3 className="font-serif text-xl text-[#1B4D3E]">{item.description}</h3>
-                  </div>
-                  {confirmation ? (
+              <div key={item.id} className="relative print-card pl-6 border-l-2 border-[#C9A961] flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+                <div className="flex-1">
+                  <div className="text-xs tracking-widest uppercase text-gray-400 mb-1">Service {index + 1}</div>
+                  <h3 className="font-serif text-xl text-[#1B4D3E] mb-3">{item.description}</h3>
+                  
+                  {savedBooking ? (
                     <span className="flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 px-3 py-1.5 border border-green-200">
-                      <CheckCircle size={14} /> Confirmed (Ref: {confirmation.confirmation_number})
+                      <CheckCircle size={14} /> Confirmed (Ref: {savedBooking.confirmation_number})
                     </span>
                   ) : (
                     <span className="flex items-center gap-1.5 text-xs font-medium text-orange-600 bg-orange-50 px-3 py-1.5 border border-orange-200">
@@ -195,10 +199,17 @@ function ItineraryContent() {
                     </span>
                   )}
                 </div>
-                <div className="bg-[#FAF7F0] p-4 text-sm text-gray-600 grid grid-cols-2 gap-4">
-                  <div><span className="block text-xs uppercase text-gray-400 mb-1">Travellers</span>{item.pax} Persons</div>
-                  <div><span className="block text-xs uppercase text-gray-400 mb-1">Service Type</span>Private Transfer / Tour</div>
-                </div>
+
+                {/* THE QR CODE */}
+                {savedBooking && (
+                  <div className="bg-white p-2 border border-[#E5DFD3] flex flex-col items-center">
+                    <QRCode 
+                      value={`https://peaceandafrova.com/driver/scan?voucherId=${savedBooking.id}&client=${encodeURIComponent(booking.customer_name)}`} 
+                      size={100} 
+                    />
+                    <p className="text-[9px] uppercase tracking-widest text-gray-500 mt-2">Scan on Pickup</p>
+                  </div>
+                )}
               </div>
             )
           })}

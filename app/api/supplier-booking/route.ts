@@ -1,14 +1,25 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendWhatsAppMessage } from '../../../lib/whatsapp'
 
 export async function POST(req: Request) {
   try {
-    const { quotationId, serviceDescription, confirmationNumber, driverName, driverPhone, driverEmail, vehiclePlate, bookingRef, clientEmail, clientName } = await req.json()
+    const { 
+      quotationId, 
+      serviceDescription, 
+      confirmationNumber, 
+      driverName, 
+      driverPhone, 
+      driverEmail, 
+      vehiclePlate, 
+      bookingRef, 
+      clientEmail, 
+      clientName 
+    } = await req.json()
     
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
-    // The Upsert: If a record with this quotation_id and service_description exists, update it.
-    // If not, create a new one. This prevents duplicates.
+    // 1. Save the booking using Upsert to prevent duplicates (Idempotency)
     const { error } = await supabase
       .from('supplier_bookings')
       .upsert(
@@ -42,6 +53,14 @@ export async function POST(req: Request) {
         method: 'POST',
         body: JSON.stringify({ driverEmail, driverName, bookingRef })
       }).catch(err => console.error("Driver Email error:", err))
+    }
+
+    // AUTOMATION 3: Trigger WhatsApp to Driver
+    if (driverPhone) {
+      const waMessage = `Hello ${driverName}, you have a new job assignment for Peace and Afrova.\n\nClient: ${clientName}\nService: ${serviceDescription}\nBooking Ref: ${bookingRef}\n\nPlease check your Driver Portal for flight and hotel details.`
+      
+      // We don't 'await' this so the Admin page reloads instantly
+      sendWhatsAppMessage(driverPhone, waMessage)
     }
 
     return NextResponse.json({ success: true })
