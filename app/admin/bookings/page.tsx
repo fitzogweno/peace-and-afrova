@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
-import { Clock, CheckCircle, FileText, Send, Navigation, RefreshCw } from 'lucide-react'
+import { Clock, CheckCircle, FileText, Send, Navigation, RefreshCw, PlaneTakeoff } from 'lucide-react'
 
 export default function BookingsOperations() {
   const router = useRouter()
@@ -14,6 +14,7 @@ export default function BookingsOperations() {
   // UI Locks
   const [processingItemId, setProcessingItemId] = useState<string | null>(null)
   const [trackingBookingRef, setTrackingBookingRef] = useState<string | null>(null)
+  const [calculatingDeparture, setCalculatingDeparture] = useState<string | null>(null)
 
   useEffect(() => {
     const isLoggedIn = document.cookie.includes('admin_session=true')
@@ -35,6 +36,8 @@ export default function BookingsOperations() {
               departure_flight,
               flight_status,
               estimated_arrival,
+              departure_time,
+              calculated_pickup_time,
               customers ( full_name, email )
             )
           )
@@ -48,6 +51,14 @@ export default function BookingsOperations() {
     }
     fetchBookings()
   }, [router])
+
+  // Safely extract data from Supabase joins
+  const getEnquiryData = (booking: any) => {
+    const quotation = Array.isArray(booking.quotations) ? booking.quotations[0] : booking.quotations;
+    if (!quotation) return null;
+    const enquiries = quotation.enquiries;
+    return Array.isArray(enquiries) ? enquiries[0] : enquiries;
+  }
 
   const handleBookSupplier = async (booking: any, item: any) => {
     setProcessingItemId(item.id)
@@ -67,8 +78,9 @@ export default function BookingsOperations() {
     const vehiclePlate = prompt(`Enter the Vehicle Plate Number (e.g. 1234 AB 56):`)
     if (vehiclePlate === null) { setProcessingItemId(null); return; }
 
-    const clientEmail = booking.quotations?.enquiries?.customers?.email
-    const clientName = booking.quotations?.enquiries?.customers?.full_name
+    const enquiry = getEnquiryData(booking);
+    const clientEmail = enquiry?.customers?.email
+    const clientName = enquiry?.customers?.full_name
 
     const res = await fetch('/api/supplier-booking', {
       method: 'POST',
@@ -96,7 +108,7 @@ export default function BookingsOperations() {
   }
 
   const handleTrackFlight = async (bookingRef: string, flightNumber: string) => {
-    if (!flightNumber) return alert("No flight number provided for this booking.")
+    if (!flightNumber) return alert("No arrival flight number provided.")
     
     setTrackingBookingRef(bookingRef)
     
@@ -121,8 +133,35 @@ export default function BookingsOperations() {
     setTrackingBookingRef(null)
   }
 
+  const handleCalculateDeparture = async (bookingRef: string, flightNumber: string) => {
+    if (!flightNumber) return alert("No departure flight number provided.")
+    
+    setCalculatingDeparture(bookingRef)
+    
+    try {
+      const res = await fetch('/api/calculate-departure', {
+        method: 'POST',
+        body: JSON.stringify({ flightNumber, bookingRef })
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        alert(`Departure Pickup Calculated: ${data.calculatedPickupTime}`)
+        window.location.reload()
+      } else {
+        const error = await res.json()
+        alert(`Failed to calculate: ${error.error}`)
+      }
+    } catch (err) {
+      alert("Error calculating departure time.")
+    }
+    
+    setCalculatingDeparture(null)
+  }
+
   const handleSendInvite = async (booking: any) => {
-    const clientEmail = booking.quotations?.enquiries?.customers?.email
+    const enquiry = getEnquiryData(booking);
+    const clientEmail = enquiry?.customers?.email
     const clientName = booking.customer_name
 
     if (!clientEmail) return alert("No email found for this client.")
@@ -179,13 +218,21 @@ export default function BookingsOperations() {
         ) : (
           <div className="space-y-6">
             {bookings.map((booking) => {
-              const items = booking.quotations?.quotation_items || []
-              const supplierBookings = booking.quotations?.supplier_bookings || []
+              const enquiry = getEnquiryData(booking);
+              // Safely handle quotation_items and supplier_bookings
+              const quotation = Array.isArray(booking.quotations) ? booking.quotations[0] : booking.quotations;
+              const items = quotation?.quotation_items || []
+              const supplierBookings = quotation?.supplier_bookings || []
+              
               const grossProfit = calculateGP(items)
-              const arrivalFlight = booking.quotations?.enquiries?.arrival_flight
-              const flightStatus = booking.quotations?.enquiries?.flight_status
-              const estimatedArrival = booking.quotations?.enquiries?.estimated_arrival
+              const arrivalFlight = enquiry?.arrival_flight
+              const departureFlight = enquiry?.departure_flight
+              const flightStatus = enquiry?.flight_status
+              const estimatedArrival = enquiry?.estimated_arrival
+              const calculatedPickup = enquiry?.calculated_pickup_time
+              
               const isTracking = trackingBookingRef === booking.booking_ref
+              const isCalculatingDep = calculatingDeparture === booking.booking_ref
 
               return (
                 <div key={booking.id} className="bg-white shadow-sm border border-[#E5DFD3] overflow-hidden">
@@ -209,29 +256,54 @@ export default function BookingsOperations() {
                       </div>
 
                       {/* FLIGHT TRACKING SECTION */}
-                      {arrivalFlight && (
-                        <div className="flex flex-wrap items-center gap-2 mt-3">
-                          <span className="text-xs font-medium text-[#1B4D3E] bg-[#FAF7F0] border border-[#E5DFD3] px-2 py-1 flex items-center gap-1">
-                            <Navigation size={12} className="text-[#C9A961]" /> Flight: {arrivalFlight}
-                          </span>
-                          
-                          <button
-                            onClick={() => handleTrackFlight(booking.booking_ref, arrivalFlight)}
-                            disabled={isTracking}
-                            className="text-xs bg-[#C9A961] text-[#1B4D3E] px-3 py-1 uppercase tracking-wider hover:bg-white border border-[#C9A961] transition disabled:opacity-50 flex items-center gap-1"
-                          >
-                            <RefreshCw size={12} className={isTracking ? 'animate-spin' : ''} /> 
-                            {isTracking ? 'Tracking...' : 'Track Flight'}
-                          </button>
-
-                          {flightStatus && (
-                            <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 border border-blue-200">
-                              Status: {flightStatus} 
-                              {estimatedArrival && ` | ETA: ${new Date(estimatedArrival).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                      <div className="mt-3 space-y-2">
+                        {arrivalFlight && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-medium text-[#1B4D3E] bg-white border border-[#E5DFD3] px-2 py-1 flex items-center gap-1">
+                              <Navigation size={12} className="text-[#C9A961]" /> Arrival: {arrivalFlight}
                             </span>
-                          )}
-                        </div>
-                      )}
+                            
+                            <button
+                              onClick={() => handleTrackFlight(booking.booking_ref, arrivalFlight)}
+                              disabled={isTracking}
+                              className="text-xs bg-[#C9A961] text-[#1B4D3E] px-3 py-1 uppercase tracking-wider hover:bg-white border border-[#C9A961] transition disabled:opacity-50 flex items-center gap-1"
+                            >
+                              <RefreshCw size={12} className={isTracking ? 'animate-spin' : ''} /> 
+                              {isTracking ? 'Tracking...' : 'Track Flight'}
+                            </button>
+
+                            {flightStatus && (
+                              <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 border border-blue-200">
+                                Status: {flightStatus} 
+                                {estimatedArrival && ` | ETA: ${new Date(estimatedArrival).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {departureFlight && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-medium text-[#1B4D3E] bg-white border border-[#E5DFD3] px-2 py-1 flex items-center gap-1">
+                              <PlaneTakeoff size={12} className="text-[#C9A961]" /> Departure: {departureFlight}
+                            </span>
+                            
+                            {!calculatedPickup ? (
+                              <button
+                                onClick={() => handleCalculateDeparture(booking.booking_ref, departureFlight)}
+                                disabled={isCalculatingDep}
+                                className="text-xs bg-[#1B4D3E] text-white px-3 py-1 uppercase tracking-wider hover:bg-[#C9A961] hover:text-[#1B4D3E] transition disabled:opacity-50 flex items-center gap-1 border border-[#1B4D3E]"
+                              >
+                                <Clock size={12} className={isCalculatingDep ? 'animate-spin' : ''} /> 
+                                {isCalculatingDep ? 'Calculating...' : 'Calculate Pickup'}
+                              </button>
+                            ) : (
+                              <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-1 border border-green-200">
+                                Pickup at Hotel: {calculatedPickup}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
                     </div>
                     <div className="text-right">
