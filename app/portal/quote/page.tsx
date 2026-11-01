@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
 
 function PortalContent() {
@@ -39,7 +40,6 @@ function PortalContent() {
     const curr = quote?.currency || 'MUR'
     if (curr === 'MUR') return `Rs ${amountInMUR.toLocaleString()}`
     
-    // Simple conversion for display (you can use live rates later)
     const rate = curr === 'USD' ? 45 : curr === 'EUR' ? 49 : 1
     const converted = amountInMUR / rate
     
@@ -163,10 +163,11 @@ function PortalContent() {
               </ul>
             </div>
 
-            <div className="mt-6 text-center border-t border-[#E5DFD3] pt-6">
-              <a href={`/portal/itinerary?ref=${quote.booking_ref}`} target="_blank" className="text-[#3D8B8B] font-medium hover:text-[#1B4D3E] underline decoration-[#3D8B8B] underline-offset-4">
-                View Your Full Itinerary & Vouchers
-              </a>
+            {/* NEW: GO TO DASHBOARD BUTTON */}
+            <div className="mt-8 pt-6 border-t border-[#E5DFD3]">
+              <Link href={`/portal/hub?ref=${quote.booking_ref}`} className="inline-block w-full text-center bg-[#1B4D3E] text-white px-8 py-4 text-sm tracking-widest uppercase hover:bg-[#C9A961] hover:text-[#1B4D3E] transition">
+                Go to Your Private Dashboard
+              </Link>
             </div>
           </div>
         )}

@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
-import { FileText, Map, CheckCircle, Download, ArrowRight, ConciergeBell, X } from 'lucide-react'
+import { FileText, Map, CheckCircle, Download, ArrowRight, ConciergeBell, X, Info } from 'lucide-react'
 
 function HubContent() {
   const searchParams = useSearchParams()
@@ -122,6 +122,21 @@ function HubContent() {
           </div>
           
           <div className="divide-y divide-[#E5DFD3]">
+            
+            {/* 0. Welcome Pack */}
+            <div className="p-6 flex flex-col md:flex-row justify-between items-center gap-4 hover:bg-[#FAF7F0] transition">
+              <div className="flex items-center gap-4">
+                <Info className="text-[#C9A961]" size={24} />
+                <div>
+                  <h3 className="font-medium text-[#1B4D3E]">Welcome to Mauritius</h3>
+                  <p className="text-xs text-gray-500">Emergency contacts, SIM advice, and local tips</p>
+                </div>
+              </div>
+              <Link href={`/portal/welcome?ref=${quoteRef}`} className="text-xs border border-[#1B4D3E] text-[#1B4D3E] px-4 py-2 uppercase tracking-widest hover:bg-[#1B4D3E] hover:text-white transition w-full md:w-auto text-center">
+                View Guide
+              </Link>
+            </div>
+
             {/* 1. The Quote */}
             <div className="p-6 flex flex-col md:flex-row justify-between items-center gap-4 hover:bg-[#FAF7F0] transition">
               <div className="flex items-center gap-4">

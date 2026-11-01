@@ -20,7 +20,8 @@ export async function POST(req: Request) {
     const cta = lang === 'FR' ? "Voir Votre Proposition" : "View Your Proposal"
     const signoff = lang === 'FR' ? "Cordialement," : "Warm regards,"
 
-    const clientPortalLink = `https://peaceandafrova.com/portal/quote?ref=${body.quoteRef}`
+    // UPDATED: Now points to the Client Portal Hub
+    const clientPortalLink = `https://peaceandafrova.com/portal/hub?ref=${body.quoteRef}`
 
     const { error } = await resend.emails.send({
       from: 'Peace and Afrova <bookings@peaceandafrova.com>',
