@@ -73,6 +73,18 @@ function BespokeForm() {
             
             <input type="hidden" name="product_interest" value={activityParam} />
 
+            {/* DESTINATION SELECTOR */}
+            <div className="border-b border-line pb-6">
+              <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Which destination are you interested in? *</label>
+              <select required name="destination" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition text-lg">
+                <option value="Mauritius">Mauritius</option>
+                <option value="Seychelles">Seychelles</option>
+                <option value="Reunion Island">Reunion Island</option>
+                <option value="Rodrigues">Rodrigues</option>
+                <option value="Multiple Islands">Multiple Islands (Multi-Centre)</option>
+              </select>
+            </div>
+
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Full Name *</label>
@@ -106,7 +118,6 @@ function BespokeForm() {
               </div>
             </div>
 
-            {/* NEW FLIGHT & DIETARY FIELDS */}
             <div className="grid md:grid-cols-2 gap-6 border-t border-line pt-6 mt-6">
               <div>
                 <label className="block text-xs tracking-luxury uppercase text-ocean mb-2">Arrival Flight Number</label>
@@ -123,7 +134,6 @@ function BespokeForm() {
               <input type="text" name="dietary_requirements" placeholder="e.g. Vegan, Nut allergy, Halal" className="w-full border-b border-line bg-transparent py-2 focus:outline-none focus:border-gold transition" />
             </div>
 
-            {/* HOTEL PREFERENCES */}
             <div className="border-t border-line pt-6 mt-6">
               <h3 className="font-serif text-lg text-ocean mb-4">Hotel Preferences</h3>
               

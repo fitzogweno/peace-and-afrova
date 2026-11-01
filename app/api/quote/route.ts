@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const randomNum = Math.floor(1000 + Math.random() * 9000)
     const ref = `PA-${new Date().getFullYear()}-${randomNum}`
 
-    // 1. Save the main Quotation (with the chosen currency)
+    // 1. Save the main Quotation (with the chosen currency and locked FX rate)
     const { data: quotation, error: quoteError } = await supabase
       .from('quotations')
       .insert({
@@ -19,7 +19,8 @@ export async function POST(req: Request) {
         subtotal: body.subtotal,
         vat: body.vat,
         total: body.total,
-        currency: body.currency, // <-- Saves MUR, USD, or EUR
+        currency: body.currency,
+        exchange_rate: body.exchange_rate, // <-- SAVED HERE
         status: 'draft',
         quote_status: 'Draft'
       })

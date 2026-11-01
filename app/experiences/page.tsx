@@ -10,7 +10,11 @@ export default function ExperiencesPage() {
   const [experiences, setExperiences] = useState<any[]>([])
   const [selectedExp, setSelectedExp] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  
+  // Filters
+  const [activeDestination, setActiveDestination] = useState('Mauritius')
   const [activeCategory, setActiveCategory] = useState('All')
+  
   const { formatPrice } = useApp()
 
   useEffect(() => {
@@ -27,16 +31,23 @@ export default function ExperiencesPage() {
     fetchExperiences()
   }, [])
 
-  const filteredExperiences = activeCategory === 'All' 
-    ? experiences 
-    : experiences.filter(exp => exp.category === activeCategory)
+  // Filter by Destination AND Category
+  const filteredExperiences = experiences.filter(exp => {
+    const matchesCategory = activeCategory === 'All' || exp.category === activeCategory;
+    // If a service has no destination (old data), default it to Mauritius
+    const expDest = exp.destination || 'Mauritius';
+    const matchesDestination = expDest === activeDestination;
+    
+    return matchesCategory && matchesDestination;
+  })
 
   return (
     <main className="min-h-screen bg-[#F5F0E6] font-sans text-[#1A1A1A] pb-24">
       <nav className="bg-[#1B4D3E] px-6 py-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center">
-            <img src="/logo-light.png" alt="Peace and Afrova" className="h-12 w-auto" />
+          <Link href="/" className="text-white">
+            <div className="text-xs tracking-[0.3em] uppercase opacity-90 font-light">Peace and Afrova</div>
+            <div className="text-xl font-serif tracking-wide">Group Company Ltd</div>
           </Link>
           <div className="hidden md:flex items-center gap-12 text-white text-xs tracking-[0.2em] uppercase font-light">
             <Link href="/experiences" className="text-[#C9A961] transition-colors">Experiences</Link>
@@ -52,13 +63,33 @@ export default function ExperiencesPage() {
           <h1 className="font-serif text-5xl md:text-6xl text-[#1B4D3E] mb-6 font-light">Our Experiences</h1>
           <div className="w-16 h-px bg-[#C9A961] mx-auto mb-8" />
           <p className="text-lg text-[#4A4A4A] leading-relaxed font-light">
-            Browse our collection of signature experiences, private transport, and curated sea activities.
+            Browse our collection of signature experiences across the Indian Ocean.
           </p>
         </div>
       </section>
 
+      {/* DESTINATION FILTERS */}
+      <section className="px-6 mb-4">
+        <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-8 border-b border-[#E5DFD3] pb-4">
+          {['Mauritius', 'Seychelles', 'Reunion Island', 'Rodrigues'].map((dest) => (
+            <button
+              key={dest}
+              onClick={() => setActiveDestination(dest)}
+              className={`text-sm tracking-widest uppercase transition-all duration-300 ${
+                activeDestination === dest 
+                  ? 'text-[#1B4D3E] font-bold border-b-2 border-[#C9A961] pb-4 -mb-[18px]' 
+                  : 'text-gray-400 hover:text-[#1B4D3E]'
+              }`}
+            >
+              {dest}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* CATEGORY FILTERS */}
       <section className="px-6 mb-12">
-        <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-4">
+        <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-4 pt-6">
           {['All', 'Sea Activities', 'Transport', 'Ancillary'].map((cat) => (
             <button
               key={cat}
@@ -75,12 +106,16 @@ export default function ExperiencesPage() {
         </div>
       </section>
 
+      {/* EXPERIENCES GRID */}
       <section className="px-6">
         <div className="max-w-7xl mx-auto">
           {loading ? (
             <p className="text-center text-gray-500">Loading experiences...</p>
           ) : filteredExperiences.length === 0 ? (
-            <p className="text-center text-gray-500">No experiences found in this category.</p>
+            <div className="text-center py-20">
+              <p className="text-gray-500 text-lg">No experiences found for {activeDestination} in this category.</p>
+              <p className="text-sm text-gray-400 mt-2">We are currently expanding our catalogue here. Contact us for bespoke options.</p>
+            </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-12">
               {filteredExperiences.map((exp) => (
@@ -93,18 +128,22 @@ export default function ExperiencesPage() {
                     />
                     <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition duration-500" />
                   </div>
+                  
                   <div className="text-xs tracking-[0.3em] uppercase text-[#3D8B8B] mb-3 font-medium">
                     {exp.category}
                   </div>
+                  
                   <h3 className="font-serif text-2xl text-[#1B4D3E] mb-3 font-light group-hover:text-[#C9A961] transition-colors">
                     {exp.name}
                   </h3>
+                  
                   <div className="flex items-center justify-between border-t border-[#E5DFD3] pt-4 mt-auto">
                     <span className="text-sm text-gray-500">From</span>
                     <span className="text-lg font-serif text-[#1B4D3E]">
                       {formatPrice(exp.sell_price * 1.15)}
                     </span>
                   </div>
+                  
                   <div className="mt-4 flex gap-4">
                     <button 
                       onClick={() => setSelectedExp(exp)} 
@@ -123,20 +162,25 @@ export default function ExperiencesPage() {
         </div>
       </section>
 
+      {/* DETAIL MODAL */}
       {selectedExp && (
         <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-[#F5F0E6] w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl relative">
             <button onClick={() => setSelectedExp(null)} className="absolute top-4 right-4 z-10 bg-white/80 p-2 rounded-full hover:bg-white transition">
               <X size={24} className="text-[#1B4D3E]" />
             </button>
+            
             <div className="aspect-video w-full overflow-hidden">
-              <img src={selectedExp.image_url} alt={selectedExp.name} className="w-full h-full object-cover" />
+              <img src={selectedExp.image_url || 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800'} alt={selectedExp.name} className="w-full h-full object-cover" />
             </div>
+            
             <div className="p-8 md:p-12">
               <div className="text-xs tracking-[0.3em] uppercase text-[#3D8B8B] mb-2 font-medium">{selectedExp.category}</div>
               <h2 className="font-serif text-4xl text-[#1B4D3E] mb-4">{selectedExp.name}</h2>
               <div className="w-16 h-px bg-[#C9A961] mb-8" />
+              
               <p className="text-lg text-gray-700 leading-relaxed mb-8 font-light">{selectedExp.description || 'A luxurious addition to your bespoke itinerary.'}</p>
+              
               <h3 className="font-serif text-2xl text-[#1B4D3E] mb-4">What's Included</h3>
               <div className="grid md:grid-cols-2 gap-3 mb-8">
                 {selectedExp.inclusions ? selectedExp.inclusions.split(',').map((item: string, i: number) => (
@@ -148,6 +192,7 @@ export default function ExperiencesPage() {
                   <p className="text-sm text-gray-500">Contact us for specific inclusions.</p>
                 )}
               </div>
+              
               <div className="bg-white p-6 border border-[#E5DFD3] flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                   <div className="text-xs text-gray-500 uppercase tracking-widest">Starting From</div>
@@ -168,7 +213,8 @@ export default function ExperiencesPage() {
 
       <footer className="bg-[#1B4D3E] text-white/60 py-16 px-6 mt-24">
         <div className="max-w-7xl mx-auto text-center font-light">
-          <img src="/logo-light.png" alt="Peace and Afrova" className="h-16 w-auto mx-auto mb-6" />
+          <div className="text-xs tracking-[0.3em] uppercase text-[#C9A961] mb-2 font-medium">Peace and Afrova</div>
+          <div className="font-serif text-lg text-white mb-6">Group Company Ltd</div>
           <p className="text-sm mb-6">Curepipe Forest Side, Mauritius</p>
           <div className="border-t border-white/10 pt-6 text-xs text-white/40">
             © 2026 Peace and Afrova Group Company Ltd.

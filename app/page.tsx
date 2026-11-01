@@ -14,11 +14,10 @@ export default function Home() {
       <nav className="absolute top-0 left-0 right-0 z-50 px-6 py-6 mt-[32px]">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            <img 
-              src="https://res.cloudinary.com/ey8jd5oe/image/upload/v1792926085/logo.png.png" 
-              alt="Peace and Afrova" 
-              className="h-12 w-auto" 
-            />
+            <div className="text-ivory">
+              <div className="text-xs tracking-luxury uppercase opacity-90">Peace and Afrova</div>
+              <div className="text-lg font-serif tracking-wider">Group Company Ltd</div>
+            </div>
           </Link>
           
           <div className="hidden md:flex items-center gap-8 text-ivory text-xs tracking-luxury uppercase">
@@ -58,20 +57,23 @@ export default function Home() {
 
         <div className="relative z-10 text-center text-ivory px-6 max-w-4xl mt-12">
           <div className="label-luxury text-gold mb-6">
-            {t('hero.badge')}
+            Private Island Experiences · Thoughtfully Curated
           </div>
+          
+          {/* UPDATED HERO TEXT */}
           <h1 className="font-serif text-5xl md:text-7xl mb-8 leading-tight whitespace-pre-line">
-            {t('hero.title')}
+            The Indian Ocean,<br />on your own terms.
           </h1>
           <p className="text-lg md:text-xl opacity-90 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
-            {t('hero.subtitle')}
+            Discover Mauritius, Seychelles, Reunion Island, and Rodrigues through exceptional private experiences, thoughtfully designed around you.
           </p>
+          
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/experiences" className="btn-gold">
-              {t('hero.cta_primary')}
+              Explore Experiences
             </Link>
             <Link href="/bespoke" className="btn-outline">
-              {t('hero.cta_secondary')}
+              Plan Bespoke Travel
             </Link>
           </div>
         </div>
@@ -82,14 +84,13 @@ export default function Home() {
         <div className="max-w-3xl mx-auto text-center">
           <div className="label-luxury mb-6">Our Approach</div>
           <h2 className="font-serif text-4xl md:text-5xl text-ocean mb-8 leading-tight">
-            Your island. Your pace.
+            Your islands. Your pace.
           </h2>
           <div className="divider-gold mx-auto mb-8" />
           <p className="text-lg text-charcoal-soft leading-relaxed font-light">
             Every journey begins with what matters to you. Tell us what you love,
             and we will coordinate the right experiences through our network of
-            trusted local partners — with the precision of Swiss hospitality and
-            the warmth of Mauritian soil.
+            trusted local partners across the Indian Ocean — with the precision of Swiss hospitality and the warmth of island soil.
           </p>
         </div>
       </section>
@@ -152,11 +153,10 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             <div>
-              <img 
-                src="https://res.cloudinary.com/ey8jd5oe/image/upload/v1792926085/logo.png.png" 
-                alt="Peace and Afrova" 
-                className="h-16 w-auto mb-4" 
-              />
+              <div className="text-xs tracking-luxury uppercase text-gold mb-2">
+                Peace and Afrova
+              </div>
+              <div className="font-serif text-lg text-ivory">Group Company Ltd</div>
             </div>
             <div>
               <div className="text-xs tracking-luxury uppercase mb-4 text-ivory/50">Explore</div>

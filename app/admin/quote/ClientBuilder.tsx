@@ -71,10 +71,13 @@ function BuilderContent() {
   const vat = discountedSubtotal * 0.15
   const totalMUR = discountedSubtotal + vat
 
+  // Get the current exchange rate for display and saving
+  const currentRate = rates[quoteCurrency] || 1
+
   const formatPrice = (amountInMUR: number) => {
     if (quoteCurrency === 'MUR') return `Rs ${amountInMUR.toLocaleString()}`
-    const rate = rates[quoteCurrency] || 1
-    const converted = amountInMUR * rate
+    
+    const converted = amountInMUR * currentRate
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: quoteCurrency,
@@ -86,7 +89,16 @@ function BuilderContent() {
     setIsSaving(true)
     const res = await fetch('/api/quote', {
       method: 'POST',
-      body: JSON.stringify({ enquiry_id: enquiryId, travel_start: travelDate, subtotal: discountedSubtotal, vat, total: totalMUR, currency: quoteCurrency, items })
+      body: JSON.stringify({ 
+        enquiry_id: enquiryId, 
+        travel_start: travelDate, 
+        subtotal: discountedSubtotal, 
+        vat, 
+        total: totalMUR, 
+        currency: quoteCurrency,
+        exchange_rate: currentRate, // <-- FREEZE THE RATE HERE
+        items 
+      })
     })
     if (res.ok) {
       const data = await res.json()
@@ -187,6 +199,12 @@ function BuilderContent() {
             <div className="text-sm text-gray-500">Group Company Ltd</div>
             <div className="text-sm text-gray-500 mt-2">Curepipe Forest Side, Mauritius</div>
             <div className="text-sm text-gray-500 mt-2 font-medium">Currency: {quoteCurrency}</div>
+            {/* DISPLAY FROZEN FX RATE */}
+            {quoteCurrency !== 'MUR' && (
+              <div className="text-[10px] text-gray-400 mt-1">
+                FX Rate: 1 {quoteCurrency} = {(1 / currentRate).toFixed(2)} MUR
+              </div>
+            )}
           </div>
         </div>
 
