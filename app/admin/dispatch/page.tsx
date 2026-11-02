@@ -84,7 +84,6 @@ export default function DispatchBoard() {
     setBookings(bookings.map(b => b.id === id ? { ...b, pickup: newTime } : b))
   }
 
-  // --- COPY MAGIC LINK FUNCTION ---
   function handleCopyLink(jobId: string) {
     const magicLink = `${window.location.origin}/driver/job/${jobId}`
     navigator.clipboard.writeText(magicLink)
@@ -164,7 +163,6 @@ export default function DispatchBoard() {
                           <div>
                             <div className="flex items-center justify-between gap-4">
                               <div className="flex items-center gap-1 font-medium text-[#1B4D3E]"><User size={14}/> {b.driver}</div>
-                              {/* COPY MAGIC LINK BUTTON */}
                               <button 
                                 onClick={() => handleCopyLink(b.id)}
                                 className="text-[10px] bg-[#C9A961] text-[#1B4D3E] px-2 py-1 rounded-sm flex items-center gap-1 hover:bg-[#b09552] transition font-bold uppercase tracking-wider"
