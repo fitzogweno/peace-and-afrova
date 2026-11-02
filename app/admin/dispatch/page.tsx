@@ -12,47 +12,55 @@ export default function DispatchBoard() {
   const [bookings, setBookings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   
-  // FIX: Initialize as empty string to avoid build-time prerender error
+  // FIX: Initialize as empty string
   const [selectedDate, setSelectedDate] = useState<string>('')
-  
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
-  // FIX: Set the date securely on the client side after mount
+  // FIX: Set the date securely on the client side using local time
   useEffect(() => {
-    setSelectedDate(new Date().toISOString().split('T')[0])
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    setSelectedDate(`${year}-${month}-${day}`)
   }, [])
 
   useEffect(() => {
-    // Don't fetch until the date has been set by the client
-    if (!selectedDate) return;
+    if (!selectedDate) return
+
+    let isActive = true
 
     async function initPage() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        router.push('/admin/login')
-        return
-      }
-
       setLoading(true)
-      const { data, error } = await supabase
-        .from('supplier_bookings')
-        .select(`
-          id, service_description, pickup_time, driver_name, vehicle_plate, confirmation_number,
-          quotations (
-            bookings ( travel_start, customer_name, car_seats, dietary_needs ),
-            enquiries ( arrival_flight, departure_flight, hotel_details )
-          )
-        `)
-        .order('id', { ascending: true })
-      
-      if (error) console.error("Error fetching dispatch data:", error)
-      
-      if (data) {
-        const mappedData = data.map(item => {
-          const quotation = Array.isArray(item.quotations) ? item.quotations[0] : item.quotations;
-          const booking = Array.isArray(quotation?.bookings) ? quotation.bookings[0] : quotation?.bookings;
-          const enquiry = Array.isArray(quotation?.enquiries) ? quotation.enquiries[0] : quotation?.enquiries;
-          
+
+      try {
+        const { data: { session }, error: authError } = await supabase.auth.getSession()
+        
+        if (authError) throw authError
+        if (!session) {
+          router.push('/admin/login')
+          return
+        }
+
+        const { data, error } = await supabase
+          .from('supplier_bookings')
+          .select(`
+            id, service_description, pickup_time, driver_name, vehicle_plate, confirmation_number,
+            quotations (
+              bookings ( travel_start, customer_name, car_seats, dietary_needs ),
+              enquiries ( arrival_flight, departure_flight, hotel_details )
+            )
+          `)
+          .order('id', { ascending: true })
+
+        if (error) throw error
+        if (!isActive) return
+
+        const mappedData = (data || []).map((item: any) => {
+          const quotation = Array.isArray(item.quotations) ? item.quotations[0] : item.quotations
+          const booking = Array.isArray(quotation?.bookings) ? quotation.bookings[0] : quotation?.bookings
+          const enquiry = Array.isArray(quotation?.enquiries) ? quotation.enquiries[0] : quotation?.enquiries
+
           return {
             id: item.id, service: item.service_description, pickup: item.pickup_time || '00:00',
             driver: item.driver_name, plate: item.vehicle_plate, ref: item.confirmation_number,
@@ -60,13 +68,23 @@ export default function DispatchBoard() {
             arrivalFlight: enquiry?.arrival_flight, departureFlight: enquiry?.departure_flight,
             hotel: enquiry?.hotel_details, carSeats: booking?.car_seats, dietary: booking?.dietary_needs
           }
-        }).filter(item => item.travelStart === selectedDate);
+        }).filter((item: any) => item.travelStart === selectedDate)
 
-        setBookings(mappedData)
+        if (isActive) setBookings(mappedData)
+
+      } catch (error) {
+        console.error('Error loading dispatch board:', error)
+        if (isActive) setBookings([])
+      } finally {
+        if (isActive) setLoading(false)
       }
-      setLoading(false)
     }
+
     initPage()
+
+    return () => {
+      isActive = false
+    }
   }, [router, selectedDate])
 
   async function handleSignOut() {
@@ -74,14 +92,29 @@ export default function DispatchBoard() {
     router.push('/admin/login')
   }
 
+  // FIX: Only update the UI if the API request succeeds
   async function handleUpdateTime(id: string, newTime: string) {
     setUpdatingId(id)
-    await fetch('/api/update-pickup', {
-      method: 'POST',
-      body: JSON.stringify({ id, pickup_time: newTime })
-    })
-    setUpdatingId(null)
-    setBookings(bookings.map(b => b.id === id ? { ...b, pickup: newTime } : b))
+    try {
+      const response = await fetch('/api/update-pickup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, pickup_time: newTime })
+      })
+
+      if (!response.ok) {
+        const errorMessage = await response.text()
+        throw new Error(errorMessage || 'Failed to update pickup time')
+      }
+
+      setBookings(prev => prev.map(b => b.id === id ? { ...b, pickup: newTime } : b))
+
+    } catch (error) {
+      console.error('Pickup update failed:', error)
+      alert('Unable to update pickup time. Please try again.')
+    } finally {
+      setUpdatingId(null)
+    }
   }
 
   function handleCopyLink(jobId: string) {
