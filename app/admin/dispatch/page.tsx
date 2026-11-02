@@ -11,10 +11,21 @@ export default function DispatchBoard() {
   const pathname = usePathname()
   const [bookings, setBookings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  
+  // FIX: Initialize as empty string to avoid build-time prerender error
+  const [selectedDate, setSelectedDate] = useState<string>('')
+  
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
+  // FIX: Set the date securely on the client side after mount
   useEffect(() => {
+    setSelectedDate(new Date().toISOString().split('T')[0])
+  }, [])
+
+  useEffect(() => {
+    // Don't fetch until the date has been set by the client
+    if (!selectedDate) return;
+
     async function initPage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
