@@ -12,8 +12,8 @@ export default function DriverLogin() {
   function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     if (!name) return
-    // We store the driver's name in a cookie to identify them
-    document.cookie = `driver_session=${name}; path=/`
+    // Securely store the driver's name in a 24-hour cookie
+    document.cookie = `driver_session=${name}; path=/; max-age=86400`
     router.push('/driver/dashboard')
   }
 

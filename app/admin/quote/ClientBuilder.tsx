@@ -2,12 +2,13 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Trash2, Printer, Save, Percent, Send, Gift, FileText } from 'lucide-react'
-import { useSearchParams } from 'next/navigation'
+import { ArrowLeft, Plus, Trash2, Printer, Save, Percent, Send, Gift, FileText, ShieldAlert } from 'lucide-react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '../../utils/supabase'
 import { useApp } from '../../context/AppContext'
 
 function BuilderContent() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const enquiryId = searchParams.get('id') || ''
   const { rates } = useApp()
@@ -24,12 +25,23 @@ function BuilderContent() {
   const [selectedServiceId, setSelectedServiceId] = useState('')
   const [discountPercent, setDiscountPercent] = useState<number>(0)
   const [quoteCurrency, setQuoteCurrency] = useState('MUR')
+  
+  // NEW: Policy Selector State
+  const [policyType, setPolicyType] = useState<'standard' | 'aviation'>('standard')
 
   const [items, setItems] = useState([{ id: 1, desc: '', pax: 1, cost: 0, sell: 0 }])
 
   useEffect(() => {
-    if (!enquiryId) return
-    async function fetchData() {
+    async function initPage() {
+      // 1. Secure Auth Check
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/admin/login')
+        return
+      }
+
+      // 2. Fetch Data
+      if (!enquiryId) return
       const { data: clientData } = await supabase
         .from('enquiries')
         .select(`travel_start, party_size, interests, has_hotel, hotel_details, hotel_budget, hotel_location, hotel_vibe, customers (full_name, email)`)
@@ -48,8 +60,8 @@ function BuilderContent() {
       const { data: serviceData } = await supabase.from('services').select('*').order('category', { ascending: true })
       if (serviceData) setCatalog(serviceData)
     }
-    fetchData()
-  }, [enquiryId])
+    initPage()
+  }, [enquiryId, router])
 
   const handleAddFromCatalog = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const serviceId = e.target.value
@@ -57,6 +69,11 @@ function BuilderContent() {
     const service = catalog.find(s => s.id === serviceId)
     if (service) {
       setItems([...items, { id: Date.now(), desc: `${service.name}`, pax: 1, cost: service.net_cost, sell: service.sell_price }])
+      
+      // Auto-switch policy to aviation if a helicopter is added
+      if (service.name.toLowerCase().includes('helicopter')) {
+        setPolicyType('aviation')
+      }
     }
     setSelectedServiceId('')
   }
@@ -71,18 +88,12 @@ function BuilderContent() {
   const vat = discountedSubtotal * 0.15
   const totalMUR = discountedSubtotal + vat
 
-  // Get the current exchange rate for display and saving
   const currentRate = rates[quoteCurrency] || 1
 
   const formatPrice = (amountInMUR: number) => {
     if (quoteCurrency === 'MUR') return `Rs ${amountInMUR.toLocaleString()}`
-    
     const converted = amountInMUR * currentRate
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: quoteCurrency,
-      maximumFractionDigits: 0
-    }).format(converted)
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: quoteCurrency, maximumFractionDigits: 0 }).format(converted)
   }
 
   async function handleSave() {
@@ -96,7 +107,7 @@ function BuilderContent() {
         vat, 
         total: totalMUR, 
         currency: quoteCurrency,
-        exchange_rate: currentRate, // <-- FREEZE THE RATE HERE
+        exchange_rate: currentRate,
         items 
       })
     })
@@ -133,6 +144,16 @@ function BuilderContent() {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          
+          {/* POLICY SELECTOR */}
+          <div className="flex items-center gap-2 bg-[#133A2E] border border-[#C9A961] rounded-sm px-3 py-1">
+            <span className="text-[10px] uppercase tracking-widest text-[#C9A961]">Terms:</span>
+            <select value={policyType} onChange={(e) => setPolicyType(e.target.value as any)} className="bg-transparent text-white text-sm focus:outline-none cursor-pointer">
+              <option value="standard" className="text-black">Standard Luxury</option>
+              <option value="aviation" className="text-black">Aviation / Premium</option>
+            </select>
+          </div>
+
           <div className="flex items-center gap-2 bg-[#133A2E] border border-[#C9A961] rounded-sm px-3 py-1">
             <select value={quoteCurrency} onChange={(e) => setQuoteCurrency(e.target.value)} className="bg-transparent text-white text-sm focus:outline-none cursor-pointer">
               <option value="MUR" className="text-black">MUR (Rs)</option>
@@ -199,7 +220,6 @@ function BuilderContent() {
             <div className="text-sm text-gray-500">Group Company Ltd</div>
             <div className="text-sm text-gray-500 mt-2">Curepipe Forest Side, Mauritius</div>
             <div className="text-sm text-gray-500 mt-2 font-medium">Currency: {quoteCurrency}</div>
-            {/* DISPLAY FROZEN FX RATE */}
             {quoteCurrency !== 'MUR' && (
               <div className="text-[10px] text-gray-400 mt-1">
                 FX Rate: 1 {quoteCurrency} = {(1 / currentRate).toFixed(2)} MUR
@@ -276,15 +296,63 @@ function BuilderContent() {
               <p>Account No: [To be added]</p>
               <p>SWIFT / BIC: [To be added]</p>
             </div>
-            <div>
-              <p className="font-medium text-[#1B4D3E] mb-1">Terms</p>
-              <p>• 50% deposit required to confirm.</p>
-              <p>• Balance due 60 days prior to travel.</p>
-              <p>• Quote valid for 14 days.</p>
-              <p className="mt-4 font-medium text-[#3D8B8B]">* This is a Proforma Invoice.</p>
+            
+            {/* DYNAMIC TERMS & CANCELLATION POLICY */}
+            <div className="border-t border-[#E5DFD3] mt-4 pt-4 md:border-none md:mt-0 md:pt-0">
+              <p className="font-medium text-[#1B4D3E] mb-2 flex items-center gap-2">
+                {policyType === 'aviation' ? <ShieldAlert size={16} className="text-orange-600"/> : null}
+                {policyType === 'standard' ? 'Standard Payment Terms' : 'Aviation & Premium Terms'}
+              </p>
+
+              {policyType === 'standard' ? (
+                <div className="space-y-1">
+                  <p>• <strong>At Booking:</strong> 40% deposit required to confirm.</p>
+                  <p>• <strong>30 Days Prior:</strong> 40% second instalment.</p>
+                  <p>• <strong>14 Days Prior:</strong> 20% final balance.</p>
+                  <p>• <em>(If booked within 30 days of arrival, 100% payment is required at confirmation).</em></p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <p>• <strong>At Booking:</strong> 30% deposit required to confirm.</p>
+                  <p>• <strong>7 Days Prior:</strong> 70% final balance.</p>
+                  <p>• <strong>Weather Policy:</strong> 100% refund or free reschedule if cancelled by the pilot/operator.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
+
+        {/* CANCELLATION POLICY BLOCK */}
+        <div className="bg-white p-6 border border-[#E5DFD3] print:border-none print:p-0">
+          <h3 className="font-serif text-lg text-[#1B4D3E] mb-2 flex items-center gap-2">
+            <ShieldAlert size={18} className="text-[#C9A961]" /> Cancellation & Refund Policy
+          </h3>
+          <p className="text-xs text-gray-500 mb-4">All cancellations must be submitted in writing. The cancellation date is the date we receive the written request.</p>
+          
+          {policyType === 'standard' ? (
+            <table className="w-full text-sm text-left border-collapse">
+              <tbody>
+                <tr className="border-b border-[#E5DFD3]"><td className="py-2">More than 60 days before arrival</td><td className="py-2 text-right">10% charge</td></tr>
+                <tr className="border-b border-[#E5DFD3]"><td className="py-2">45 – 60 days before arrival</td><td className="py-2 text-right">25% charge</td></tr>
+                <tr className="border-b border-[#E5DFD3]"><td className="py-2">30 – 44 days before arrival</td><td className="py-2 text-right">50% charge</td></tr>
+                <tr className="border-b border-[#E5DFD3]"><td className="py-2">15 – 29 days before arrival</td><td className="py-2 text-right">75% charge</td></tr>
+                <tr className="border-b border-[#E5DFD3]"><td className="py-2">0 – 14 days before arrival</td><td className="py-2 text-right font-medium">100% charge</td></tr>
+                <tr><td className="py-2">No-show</td><td className="py-2 text-right font-medium">100% charge</td></tr>
+              </tbody>
+            </table>
+          ) : (
+            <ul className="text-sm text-gray-700 space-y-2 list-disc pl-5">
+              <li><strong>Weather:</strong> If the pilot/operator cancels due to weather, you receive a 100% refund or free reschedule.</li>
+              <li><strong>Client Cancellation:</strong> Subject to the specific terms of the helicopter/yacht operator. Due to the premium nature of this booking, deposits are generally non-refundable once the slot is confirmed.</li>
+              <li><strong>Transfers:</strong> Private chauffeur services are non-refundable within 24 hours of dispatch.</li>
+            </ul>
+          )}
+          
+          <div className="mt-6 pt-4 border-t border-[#E5DFD3] text-xs text-gray-500">
+            <p>Quote valid for 14 days. Refunds are processed via the original payment method. Bank fees and currency conversion costs may apply. This is a Proforma Invoice, not a final tax receipt.</p>
+          </div>
+        </div>
+
       </main>
     </div>
   )

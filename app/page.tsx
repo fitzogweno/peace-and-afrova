@@ -19,13 +19,15 @@ export default function Home() {
               <div className="text-lg font-serif tracking-wider">Group Company Ltd</div>
             </div>
           </Link>
-          
+
           <div className="hidden md:flex items-center gap-8 text-ivory text-xs tracking-luxury uppercase">
+            {/* FIXED: Hardcoded Destinations so it doesn't show NAV.DESTINATIONS */}
+            <Link href="/destinations" className="hover:text-gold transition">Destinations</Link>
             <Link href="/experiences" className="hover:text-gold transition">{t('nav.experiences')}</Link>
             <Link href="/bespoke" className="hover:text-gold transition">{t('nav.bespoke')}</Link>
             <Link href="/about" className="hover:text-gold transition">{t('nav.about')}</Link>
             <Link href="/contact" className="hover:text-gold transition">{t('nav.contact')}</Link>
-            
+
             <div className="border-l border-ivory/30 pl-8">
               <GlobalPreferences />
             </div>
@@ -35,7 +37,6 @@ export default function Home() {
 
       {/* HERO - CINEMATIC VIDEO BACKGROUND */}
       <section className="relative h-[calc(100vh-32px)] flex items-center justify-center overflow-hidden">
-        
         <div className="absolute inset-0 w-full h-full overflow-hidden">
           <video
             autoPlay
@@ -46,9 +47,9 @@ export default function Home() {
             className="absolute inset-0 w-full h-full object-cover"
             poster="https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=2000"
           >
-            <source 
-              src="https://res.cloudinary.com/ey8jd5oe/video/upload/v1792921746/hero.mp4" 
-              type="video/mp4" 
+            <source
+              src="https://res.cloudinary.com/ey8jd5oe/video/upload/v1792921746/hero.mp4"
+              type="video/mp4"
             />
           </video>
         </div>
@@ -59,15 +60,14 @@ export default function Home() {
           <div className="label-luxury text-gold mb-6">
             Private Island Experiences · Thoughtfully Curated
           </div>
-          
-          {/* UPDATED HERO TEXT */}
+
           <h1 className="font-serif text-5xl md:text-7xl mb-8 leading-tight whitespace-pre-line">
             The Indian Ocean,<br />on your own terms.
           </h1>
           <p className="text-lg md:text-xl opacity-90 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
             Discover Mauritius, Seychelles, Reunion Island, and Rodrigues through exceptional private experiences, thoughtfully designed around you.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/experiences" className="btn-gold">
               Explore Experiences
@@ -161,6 +161,7 @@ export default function Home() {
             <div>
               <div className="text-xs tracking-luxury uppercase mb-4 text-ivory/50">Explore</div>
               <ul className="space-y-2 text-sm">
+                <li><Link href="/destinations" className="hover:text-gold transition">Destinations</Link></li>
                 <li><Link href="/experiences" className="hover:text-gold transition">Experiences</Link></li>
                 <li><Link href="/bespoke" className="hover:text-gold transition">Bespoke Travel</Link></li>
                 <li><Link href="/careers" className="hover:text-gold transition">Careers</Link></li>

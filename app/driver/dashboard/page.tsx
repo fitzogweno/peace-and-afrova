@@ -2,8 +2,8 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
-import { MapPin, User, CheckCircle, Navigation } from 'lucide-react'
+import { supabase } from '../../utils/supabase'
+import { MapPin, CheckCircle, Navigation, AlertTriangle, Clock, User } from 'lucide-react'
 
 function DriverDashboardContent() {
   const router = useRouter()
@@ -12,43 +12,48 @@ function DriverDashboardContent() {
   const [driverName, setDriverName] = useState('')
   const [loading, setLoading] = useState(true)
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
   useEffect(() => {
-    const urlName = searchParams.get('driver')
-    const cookieName = document.cookie.split('; ').find(row => row.startsWith('driver_session='))?.split('=')[1]
-    const name = urlName || cookieName || ''
+    async function initDashboard() {
+      // 1. Check for Magic Link Token or secure Cookie
+      const magicToken = searchParams.get('token')
+      const cookieName = document.cookie.split('; ').find(row => row.startsWith('driver_session='))?.split('=')[1]
+      
+      let nameToFetch = cookieName
 
-    if (!name) {
-      router.push('/driver')
-      return
-    }
-    
-    document.cookie = `driver_session=${name}; path=/`
-    setDriverName(name)
+      // 2. If they clicked a Magic Link, verify it and log them in securely
+      if (magicToken) {
+        const { data: jobData } = await supabase
+          .from('supplier_bookings')
+          .select('driver_name')
+          .eq('id', magicToken)
+          .single()
+        
+        if (jobData?.driver_name) {
+          nameToFetch = jobData.driver_name
+          document.cookie = `driver_session=${nameToFetch}; path=/; max-age=86400`
+        }
+      }
 
-    async function fetchJobs() {
-      // Simplied, bulletproof query
+      if (!nameToFetch) {
+        router.push('/driver')
+        return
+      }
+      
+      setDriverName(nameToFetch)
+
+      // 3. Fetch all pending jobs for this driver
       const { data, error } = await supabase
         .from('supplier_bookings')
         .select(`
           *,
           quotations (
-            bookings (
-              travel_start,
-              customer_name
-            ),
-            enquiries (
-              arrival_flight,
-              hotel_details
-            )
+            bookings ( travel_start, customer_name, car_seats, dietary_needs ),
+            enquiries ( arrival_flight, hotel_details )
           )
         `)
-        .eq('driver_name', name)
+        .eq('driver_name', nameToFetch)
         .neq('job_status', 'Completed')
+        .order('pickup_time', { ascending: true })
 
       if (error) {
         console.error("Error fetching driver jobs:", error)
@@ -57,18 +62,36 @@ function DriverDashboardContent() {
       }
       setLoading(false)
     }
-    fetchJobs()
+    
+    initDashboard()
   }, [router, searchParams])
 
+  // --- THE NEW SECURE UPDATE STATUS FUNCTION ---
   async function updateStatus(jobId: string, newStatus: string) {
-    const { error } = await supabase
-      .from('supplier_bookings')
-      .update({ job_status: newStatus })
-      .eq('id', jobId)
+    try {
+      const res = await fetch('/api/driver/update-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ jobId, newStatus })
+      })
 
-    if (!error) {
-      setJobs(jobs.map(job => job.id === jobId ? { ...job, job_status: newStatus } : job))
-    } else {
+      if (res.ok) {
+        const data = await res.json()
+        
+        // Update the UI instantly
+        setJobs(jobs.map(job => job.id === jobId ? { ...job, job_status: newStatus } : job))
+        
+        // Show the Service Guarantee Alert if a credit was applied!
+        if (data.creditApplied > 0) {
+          alert(`Job updated. The client has been automatically credited Rs ${data.creditApplied} for the delay. This will be reflected on their invoice.`)
+        }
+      } else {
+        const errorData = await res.json()
+        alert(`Failed to update status: ${errorData.error || 'Unknown error'}`)
+      }
+    } catch (err) {
       alert("Failed to update status. Check internet connection.")
     }
   }
@@ -104,9 +127,9 @@ function DriverDashboardContent() {
       ) : (
         <div className="space-y-4">
           {jobs.map(job => {
-            // Safely extract data based on the new simplified query
-            const booking = job.quotations?.bookings?.[0]
-            const enquiry = job.quotations?.enquiries?.[0]
+            const booking = Array.isArray(job.quotations?.bookings) ? job.quotations.bookings[0] : job.quotations?.bookings
+            const enquiry = Array.isArray(job.quotations?.enquiries) ? job.quotations.enquiries[0] : job.quotations?.enquiries
+            
             const flight = enquiry?.arrival_flight
             const hotel = enquiry?.hotel_details || 'Hotel TBC'
 
@@ -120,9 +143,17 @@ function DriverDashboardContent() {
                 <div className="font-serif text-lg text-[#1B4D3E] mb-3">{booking?.customer_name || 'Client Name TBC'}</div>
                 
                 <div className="space-y-2 text-sm text-gray-600 mb-4 bg-[#FAF7F0] p-3 border border-[#E5DFD3]">
-                  <p className="flex items-center gap-2"><User size={14} className="text-[#C9A961]"/> Provider: {job.supplier_name}</p>
                   <p className="flex items-center gap-2"><MapPin size={14} className="text-[#C9A961]"/> Location: {hotel}</p>
+                  <p className="flex items-center gap-2"><Clock size={14} className="text-[#C9A961]"/> Pickup: <strong className="text-[#1B4D3E]">{job.pickup_time || 'TBC'}</strong></p>
                   {flight && <p className="flex items-center gap-2 font-medium text-[#1B4D3E]"><Navigation size={14} className="text-[#C9A961]"/> Flight: {flight}</p>}
+                  
+                  {/* Pre-Arrival Alerts */}
+                  {(booking?.car_seats || booking?.dietary_needs) && (
+                    <div className="mt-2 pt-2 border-t border-[#E5DFD3] space-y-1">
+                      {booking?.car_seats && <p className="text-xs font-bold text-orange-600 flex items-center gap-1"><AlertTriangle size={12}/> Car Seat: {booking.car_seats}</p>}
+                      {booking?.dietary_needs && <p className="text-xs font-bold text-red-600 flex items-center gap-1"><AlertTriangle size={12}/> Diet: {booking.dietary_needs}</p>}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2">
@@ -151,7 +182,7 @@ function DriverDashboardContent() {
 
 export default function DriverDashboard() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#F5F0E6] text-[#1B4D3E]">Loading...</div>}>
       <DriverDashboardContent />
     </Suspense>
   )

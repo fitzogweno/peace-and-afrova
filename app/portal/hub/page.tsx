@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
-import { FileText, Map, CheckCircle, Download, ArrowRight, ConciergeBell, X, Info } from 'lucide-react'
+import { FileText, Map, CheckCircle, Download, ArrowRight, ConciergeBell, X, Info, UserCheck } from 'lucide-react'
 
 function HubContent() {
   const searchParams = useSearchParams()
@@ -19,6 +19,10 @@ function HubContent() {
   const [requestType, setRequestType] = useState('Restaurant Reservation')
   const [requestDetails, setRequestDetails] = useState('')
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false)
+
+  // Pre-Arrival Intake State
+  const [showIntake, setShowIntake] = useState(false)
+  const [isSubmittingIntake, setIsSubmittingIntake] = useState(false)
 
   useEffect(() => {
     if (!quoteRef) return
@@ -63,6 +67,25 @@ function HubContent() {
     setShowConcierge(false)
     setRequestDetails('')
     alert("Concierge request sent! Our team will contact you shortly.")
+  }
+
+  async function handleIntakeSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setIsSubmittingIntake(true)
+    const formData = new FormData(e.currentTarget)
+    
+    await supabase.from('bookings').update({
+      intake_flight: formData.get('flight'),
+      dietary_needs: formData.get('dietary'),
+      special_occasion: formData.get('occasion'),
+      car_seats: formData.get('carseats'),
+      pace_preference: formData.get('pace'),
+      intake_submitted: true
+    }).eq('id', booking.id)
+
+    setBooking({ ...booking, intake_submitted: true })
+    setIsSubmittingIntake(false)
+    setShowIntake(false)
   }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-[#1B4D3E]">Loading your private portal...</div>
@@ -113,6 +136,27 @@ function HubContent() {
             </div>
           </div>
         </div>
+
+        {/* PRE-ARRIVAL INTAKE BANNER */}
+        {isDepositPaid && !booking?.intake_submitted && (
+          <div className="mb-8 bg-[#FAF7F0] border border-[#C9A961] p-6 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4 animate-in fade-in">
+            <div className="flex items-center gap-4">
+              <div className="bg-white p-3 rounded-full border border-[#E5DFD3]">
+                <UserCheck className="text-[#C9A961]" size={24} />
+              </div>
+              <div>
+                <h3 className="font-serif text-xl text-[#1B4D3E]">Complete Your Pre-Arrival Profile</h3>
+                <p className="text-sm text-gray-600">Help us prepare your villa, chauffeur, and special surprises before you land.</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setShowIntake(true)}
+              className="bg-[#1B4D3E] text-white px-6 py-3 text-xs uppercase tracking-widest hover:bg-[#C9A961] hover:text-[#1B4D3E] transition whitespace-nowrap"
+            >
+              Fill Form
+            </button>
+          </div>
+        )}
 
         {/* DOCUMENTS LIST */}
         <div className="bg-white shadow-sm border border-[#E5DFD3] mb-8">
@@ -219,7 +263,7 @@ function HubContent() {
 
         {/* CONCIERGE MODAL */}
         {showConcierge && (
-          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="bg-[#F5F0E6] w-full max-w-md p-8 shadow-2xl relative">
               <button onClick={() => setShowConcierge(false)} className="absolute top-4 right-4 text-gray-500 hover:text-black">
                 <X size={24} />
@@ -246,6 +290,62 @@ function HubContent() {
                   </button>
                   <button type="button" onClick={() => setShowConcierge(false)} className="flex-1 border border-[#1B4D3E] text-[#1B4D3E] py-3 text-xs uppercase tracking-widest hover:bg-white transition">
                     Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* PRE-ARRIVAL INTAKE MODAL */}
+        {showIntake && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-[#F5F0E6] w-full max-w-lg p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+              <button onClick={() => setShowIntake(false)} className="absolute top-4 right-4 text-gray-500 hover:text-black">
+                <X size={24} />
+              </button>
+              <h3 className="font-serif text-2xl text-[#1B4D3E] mb-2">Pre-Arrival Preferences</h3>
+              <p className="text-sm text-gray-600 mb-6">Help us prepare for your arrival so everything is perfect.</p>
+              
+              <form onSubmit={handleIntakeSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Flight Arrival Number</label>
+                  <input required name="flight" placeholder="e.g., MK 047" className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961]" />
+                </div>
+                
+                <div>
+                  <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Dietary Requirements</label>
+                  <input name="dietary" placeholder="e.g., 1 Vegan, 1 Nut Allergy" className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961]" />
+                </div>
+
+                <div>
+                  <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Celebrating an Occasion?</label>
+                  <select name="occasion" className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961]">
+                    <option value="None">None</option>
+                    <option value="Honeymoon">Honeymoon</option>
+                    <option value="Anniversary">Anniversary</option>
+                    <option value="Birthday">Birthday</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Car Seats Required?</label>
+                  <input name="carseats" placeholder="e.g., 1 infant seat, 1 booster" className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961]" />
+                </div>
+
+                <div>
+                  <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Preferred Pace</label>
+                  <select name="pace" className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961]">
+                    <option value="Relaxed">Relaxed (Lots of downtime)</option>
+                    <option value="Balanced">Balanced (Mix of activity and rest)</option>
+                    <option value="Action-Packed">Action-Packed (Maximize every day)</option>
+                  </select>
+                </div>
+
+                <div className="pt-4 border-t border-[#E5DFD3] mt-6">
+                  <button type="submit" disabled={isSubmittingIntake} className="w-full bg-[#1B4D3E] text-white py-4 text-xs tracking-widest uppercase font-bold hover:bg-[#C9A961] hover:text-[#1B4D3E] transition disabled:opacity-50">
+                    {isSubmittingIntake ? 'Saving...' : 'Save Profile'}
                   </button>
                 </div>
               </form>

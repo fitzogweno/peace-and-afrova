@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/balance-reminders",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/abandoned-quotes",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}

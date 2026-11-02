@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
+import { Handshake, AlertCircle, ShieldCheck } from 'lucide-react'
 
 function PortalContent() {
   const searchParams = useSearchParams()
@@ -15,17 +16,19 @@ function PortalContent() {
   const [paymentData, setPaymentData] = useState<any>(null)
 
   const [showAmendment, setShowAmendment] = useState(false)
+  const [targetBudget, setTargetBudget] = useState('')
+  const [adjustmentType, setAdjustmentType] = useState('Keep as is, but adjust price')
   const [amendmentMessage, setAmendmentMessage] = useState('')
-  const [requestedPercent, setRequestedPercent] = useState<number>(100)
   const [isSubmittingOffer, setIsSubmittingOffer] = useState(false)
   const [offerSuccess, setOfferSuccess] = useState(false)
 
   useEffect(() => {
     if (!quoteRef) return
     async function fetchQuote() {
+      // UPDATED: Fetching the service_credit from the linked bookings table
       const { data } = await supabase
         .from('quotations')
-        .select(`*, enquiries ( customers (full_name) )`)
+        .select(`*, enquiries ( customers (full_name) ), bookings ( service_credit )`)
         .eq('booking_ref', quoteRef)
         .single()
       
@@ -35,19 +38,12 @@ function PortalContent() {
     fetchQuote()
   }, [quoteRef])
 
-  // Currency Formatter based on the quote's saved currency
   const formatQuotePrice = (amountInMUR: number) => {
     const curr = quote?.currency || 'MUR'
     if (curr === 'MUR') return `Rs ${amountInMUR.toLocaleString()}`
-    
     const rate = curr === 'USD' ? 45 : curr === 'EUR' ? 49 : 1
     const converted = amountInMUR / rate
-    
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: curr,
-      maximumFractionDigits: 0
-    }).format(converted)
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, maximumFractionDigits: 0 }).format(converted)
   }
 
   async function handleAccept() {
@@ -60,28 +56,21 @@ function PortalContent() {
           bookingRef: quote.booking_ref,
           customerName: quote.enquiries?.customers?.full_name,
           travelStart: quote.travel_start,
-          totalAmount: quote.total
+          totalAmount: adjustedTotal // Pass the adjusted total
         })
       })
       const data = await res.json()
-      if (data.success) {
-        setPaymentData(data)
-      } else {
-        alert("Failed to accept quote.")
-      }
+      if (data.success) setPaymentData(data)
+      else alert(`Failed: ${data.error || 'Unknown error'}`)
     } catch (err) {
       alert("Error processing request.")
+    } finally {
+      setIsAccepting(false)
     }
-    setIsAccepting(false)
   }
 
   async function handleAmendment(e: React.FormEvent) {
     e.preventDefault()
-    if (requestedPercent < 90) {
-      alert("We cannot accept an offer below 90% of the total price.")
-      return
-    }
-
     setIsSubmittingOffer(true)
     try {
       const res = await fetch('/api/send-amendment', {
@@ -89,8 +78,9 @@ function PortalContent() {
         body: JSON.stringify({
           quoteRef: quote.booking_ref,
           clientName: quote.enquiries?.customers?.full_name,
-          message: amendmentMessage,
-          requestedPercent: requestedPercent
+          targetBudget: targetBudget,
+          adjustmentType: adjustmentType,
+          message: amendmentMessage
         })
       })
       if (res.ok) setOfferSuccess(true)
@@ -100,6 +90,19 @@ function PortalContent() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-[#1B4D3E]">Loading your proposal...</div>
   if (!quote) return <div className="min-h-screen flex items-center justify-center text-red-600">Proposal not found. Please check your link.</div>
+
+  // Safely extract the Service Credit (handling Supabase array returns)
+  const bookingData = Array.isArray(quote.bookings) ? quote.bookings[0] : quote.bookings
+  const serviceCredit = bookingData?.service_credit || 0
+
+  // Calculate the Adjusted Total
+  const originalTotal = quote.total
+  const adjustedTotal = originalTotal - serviceCredit
+
+  const departureDate = quote.travel_start ? new Date(quote.travel_start) : new Date()
+  const balanceDueDate = new Date(departureDate)
+  balanceDueDate.setDate(balanceDueDate.getDate() - 7)
+  const formattedBalanceDate = balanceDueDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
   return (
     <div className="min-h-screen bg-[#F5F0E6] py-12 px-6 font-sans text-[#1A1A1A]">
@@ -121,17 +124,30 @@ function PortalContent() {
           </div>
           <div className="text-right">
             <div className="text-xs tracking-widest uppercase text-gray-500 mb-1">Total (Incl. VAT)</div>
-            <div className="text-2xl font-serif text-[#1B4D3E]">{formatQuotePrice(quote.total)}</div>
+            <div className="text-2xl font-serif text-[#1B4D3E]">{formatQuotePrice(adjustedTotal)}</div>
           </div>
         </div>
+
+        {/* --- NEW: SERVICE GUARANTEE BANNER --- */}
+        {serviceCredit > 0 && (
+          <div className="bg-green-50 border border-green-200 p-4 mb-8 flex items-start gap-3 rounded-sm animate-in fade-in slide-in-from-top-4">
+            <ShieldCheck className="text-green-600 shrink-0 mt-0.5" size={24} />
+            <div>
+              <h4 className="font-bold text-green-800 text-sm">Service Guarantee Applied</h4>
+              <p className="text-sm text-green-700">
+                We noticed your driver was delayed. As part of our Swiss Precision promise, we have automatically applied a credit of <strong>{formatQuotePrice(serviceCredit)}</strong> to your invoice.
+              </p>
+            </div>
+          </div>
+        )}
 
         {!paymentData && !showAmendment && !offerSuccess && (
           <div className="flex flex-col md:flex-row gap-4 justify-center mt-12">
             <button onClick={handleAccept} disabled={isAccepting} className="bg-[#1B4D3E] text-white px-8 py-4 text-sm tracking-widest uppercase hover:bg-[#2A6B58] transition disabled:opacity-50">
-              {isAccepting ? 'Processing...' : 'Accept & Pay Deposit'}
+              {isAccepting ? 'PROCESSING...' : 'ACCEPT & PAY DEPOSIT'}
             </button>
-            <button onClick={() => setShowAmendment(true)} className="border border-[#1B4D3E] text-[#1B4D3E] px-8 py-4 text-sm tracking-widest uppercase hover:bg-[#FAF7F0] transition">
-              Request Amendment
+            <button onClick={() => setShowAmendment(true)} className="border border-[#1B4D3E] text-[#1B4D3E] px-8 py-4 text-sm tracking-widest uppercase hover:bg-[#FAF7F0] transition flex items-center justify-center gap-2">
+              <Handshake size={18} /> Tailor This Proposal
             </button>
           </div>
         )}
@@ -145,12 +161,35 @@ function PortalContent() {
             
             <div className="bg-[#FAF7F0] p-6 mb-6">
               <div className="flex justify-between items-center mb-2 pb-2 border-b border-[#E5DFD3]">
-                <span className="text-sm text-gray-600">Total Trip Cost</span>
-                <span className="font-medium text-[#1B4D3E]">{formatQuotePrice(quote.total)}</span>
+                <span className="text-sm text-gray-600">Original Total</span>
+                <span className="font-medium text-[#1B4D3E]">{formatQuotePrice(originalTotal)}</span>
               </div>
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-sm font-medium text-[#1B4D3E]">Deposit Due (50%)</span>
+
+              {serviceCredit > 0 && (
+                <div className="flex justify-between items-center mb-2 pb-2 border-b border-[#E5DFD3] text-green-700">
+                  <span className="text-sm font-medium">Service Guarantee Credit</span>
+                  <span className="font-medium">- {formatQuotePrice(serviceCredit)}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center mb-2 pb-2 border-b border-[#E5DFD3]">
+                <span className="text-sm font-medium text-[#1B4D3E]">Adjusted Total</span>
+                <span className="font-medium text-[#1B4D3E]">{formatQuotePrice(adjustedTotal)}</span>
+              </div>
+
+              <div className="flex justify-between items-center mb-2 pb-2 border-b border-[#E5DFD3]">
+                <span className="text-sm font-medium text-[#1B4D3E]">Deposit Due Now (30%)</span>
                 <span className="text-xl font-serif text-[#1B4D3E]">{formatQuotePrice(paymentData.depositAmount)}</span>
+              </div>
+              
+              <div className="flex justify-between items-center mt-2">
+                <div>
+                  <span className="text-sm font-medium text-[#1B4D3E]">Final Balance</span>
+                  <p className="text-[10px] text-red-600 font-bold uppercase tracking-wider mt-1 flex items-center gap-1">
+                    <AlertCircle size={12} /> Due 7 days before departure ({formattedBalanceDate})
+                  </p>
+                </div>
+                <span className="text-xl font-serif text-[#1B4D3E]">{formatQuotePrice(adjustedTotal - paymentData.depositAmount)}</span>
               </div>
             </div>
 
@@ -163,7 +202,6 @@ function PortalContent() {
               </ul>
             </div>
 
-            {/* NEW: GO TO DASHBOARD BUTTON */}
             <div className="mt-8 pt-6 border-t border-[#E5DFD3]">
               <Link href={`/portal/hub?ref=${quote.booking_ref}`} className="inline-block w-full text-center bg-[#1B4D3E] text-white px-8 py-4 text-sm tracking-widest uppercase hover:bg-[#C9A961] hover:text-[#1B4D3E] transition">
                 Go to Your Private Dashboard
@@ -173,23 +211,54 @@ function PortalContent() {
         )}
 
         {showAmendment && !offerSuccess && (
-          <div className="mt-12 bg-[#FAF7F0] border border-[#C9A961] p-6 md:p-8">
-            <h3 className="font-serif text-2xl text-[#1B4D3E] mb-2">Request an Amendment</h3>
+          <div className="mt-12 bg-[#FAF7F0] border border-[#C9A961] p-6 md:p-8 animate-in fade-in slide-in-from-top-4">
+            <h3 className="font-serif text-2xl text-[#1B4D3E] mb-2">Tailor This Proposal</h3>
+            <p className="text-sm text-gray-600 mb-6">If you'd like to adjust this itinerary to align with your budget or preferences, please let our concierge know below.</p>
+            
             <form onSubmit={handleAmendment}>
+              
               <div className="mb-6">
-                <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-2 font-medium">Your Request</label>
-                <textarea required value={amendmentMessage} onChange={(e) => setAmendmentMessage(e.target.value)} placeholder="Please describe the changes..." className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961]" rows={4} />
+                <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-2 font-medium">Target Budget (Optional)</label>
+                <input 
+                  type="text" 
+                  value={targetBudget}
+                  onChange={(e) => setTargetBudget(e.target.value)}
+                  placeholder="e.g., €2,500 or Rs 125,000" 
+                  className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961] bg-white" 
+                />
               </div>
-              <div className="mb-8 border-t border-[#E5DFD3] pt-6">
-                <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-2 font-medium">Discount Request (Optional)</label>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-[#1B4D3E]">Target Price:</span>
-                  <span className="text-xl font-serif text-[#1B4D3E]">{formatQuotePrice((quote.total * requestedPercent) / 100)} ({requestedPercent}%)</span>
-                </div>
-                <input type="range" min="90" max="100" value={requestedPercent} onChange={(e) => setRequestedPercent(Number(e.target.value))} className="w-full accent-[#C9A961]" />
+
+              <div className="mb-6">
+                <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-2 font-medium">What would you like to adjust?</label>
+                <select 
+                  value={adjustmentType}
+                  onChange={(e) => setAdjustmentType(e.target.value)}
+                  className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961] bg-white"
+                >
+                  <option value="Keep as is, but adjust price">Keep as is, but adjust price</option>
+                  <option value="Change hotel / accommodation">Change hotel / accommodation</option>
+                  <option value="Upgrade or downgrade transport">Upgrade or downgrade transport</option>
+                  <option value="Swap or remove an activity">Swap or remove an activity</option>
+                  <option value="Something else">Something else</option>
+                </select>
               </div>
+
+              <div className="mb-6">
+                <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-2 font-medium">Message / Requested Changes</label>
+                <textarea 
+                  required 
+                  value={amendmentMessage} 
+                  onChange={(e) => setAmendmentMessage(e.target.value)} 
+                  placeholder="E.g., We want to keep the private helicopter, but are open to a different hotel to bring the total to €3,000." 
+                  className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961] bg-white" 
+                  rows={4} 
+                />
+              </div>
+              
               <div className="flex gap-4 border-t border-[#E5DFD3] pt-6">
-                <button type="submit" disabled={isSubmittingOffer} className="bg-[#C9A961] text-[#1B4D3E] px-6 py-3 text-sm font-medium uppercase tracking-widest hover:bg-[#b09552] transition disabled:opacity-50">{isSubmittingOffer ? 'Sending...' : 'Submit Amendment'}</button>
+                <button type="submit" disabled={isSubmittingOffer} className="bg-[#1B4D3E] text-white px-8 py-3 text-sm font-medium uppercase tracking-widest hover:bg-[#C9A961] hover:text-[#1B4D3E] transition disabled:opacity-50">
+                  {isSubmittingOffer ? 'Sending...' : 'Submit Request'}
+                </button>
                 <button type="button" onClick={() => setShowAmendment(false)} className="text-gray-500 text-sm hover:text-gray-800 uppercase tracking-widest">Cancel</button>
               </div>
             </form>
@@ -199,7 +268,7 @@ function PortalContent() {
         {offerSuccess && (
           <div className="mt-12 bg-green-50 border border-green-200 p-8 text-center">
             <h3 className="font-serif text-2xl text-green-800 mb-2">Request Received</h3>
-            <p className="text-sm text-green-700">Thank you. Our team has been notified.</p>
+            <p className="text-sm text-green-700">Thank you. Our concierge has been notified and will review your custom request shortly.</p>
           </div>
         )}
       </div>

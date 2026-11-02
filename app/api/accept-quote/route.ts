@@ -5,16 +5,33 @@ export async function POST(req: Request) {
   try {
     const body = await req.json()
     
-    // Connect to Supabase
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
-    // 1. Calculate the 50% deposit
-    const depositAmount = body.totalAmount * 0.50
+    // 1. Check if a booking already exists for this quotation
+    const { data: existingBooking } = await supabase
+      .from('bookings')
+      .select('id, payment_status')
+      .eq('quotation_id', body.quoteId)
+      .maybeSingle()
 
-    // 2. Create the permanent Booking Record
+    let depositAmount = body.totalAmount * 0.50
+
+    if (existingBooking) {
+      console.log("Booking already exists. Fetching existing deposit...")
+      
+      // If it's already fully paid, stop them
+      if (existingBooking.payment_status === 'Paid') {
+        return NextResponse.json({ error: 'This trip has already been fully paid.' }, { status: 400 })
+      }
+
+      // If it exists but isn't paid, just let them see the payment instructions again
+      return NextResponse.json({ success: true, depositAmount })
+    }
+
+    // 2. If no booking exists, create the permanent Booking Record
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .insert({
@@ -29,26 +46,20 @@ export async function POST(req: Request) {
       .select()
       .single()
 
-    if (bookingError) {
-      console.error("Booking Error:", bookingError)
-      throw bookingError
-    }
+    if (bookingError) throw bookingError
 
     // 3. Create the Pending Payment Record
     const { error: paymentError } = await supabase
       .from('payments')
       .insert({
         quotation_id: body.quoteId,
-        booking_id: booking.id, // Links the payment to the booking!
+        booking_id: booking.id, 
         amount: depositAmount,
         status: 'Pending',
         payment_type: 'Deposit'
       })
 
-    if (paymentError) {
-      console.error("Payment Error:", paymentError)
-      throw paymentError
-    }
+    if (paymentError) throw paymentError
 
     // 4. Update the original quote status
     await supabase

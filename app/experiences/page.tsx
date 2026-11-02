@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight, X, CheckCircle } from 'lucide-react'
+import { ArrowLeft, ArrowRight, X, CheckCircle, Compass, Send, CheckCircle2 } from 'lucide-react'
 import { supabase } from '../utils/supabase'
 import { useApp } from '../context/AppContext'
 
@@ -16,6 +16,17 @@ export default function ExperiencesPage() {
   const [activeCategory, setActiveCategory] = useState('All')
   
   const { formatPrice } = useApp()
+
+  // --- BESPOKE INQUIRY FORM STATE ---
+  const [inquiryVibe, setInquiryVibe] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
+
+  // Reset form state if they switch tabs
+  useEffect(() => {
+    setIsSuccess(false)
+    setInquiryVibe('')
+  }, [activeDestination])
 
   useEffect(() => {
     async function fetchExperiences() {
@@ -40,6 +51,56 @@ export default function ExperiencesPage() {
     
     return matchesCategory && matchesDestination;
   })
+
+  // --- INNOVATIVE EMPTY STATE LOGIC ---
+  const destinationCopy: Record<string, any> = {
+    'Seychelles': {
+      title: 'The Luxury Twin',
+      desc: 'Granite boulders, pristine beaches, and absolute luxury. Tell us your dream Seychelles itinerary, and our local experts will craft it.',
+      img: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1600',
+    },
+    'Reunion Island': {
+      title: 'The Intense Island',
+      desc: 'Volcanoes, cirques, and dramatic landscapes. Whether you want extreme hiking or luxury spa retreats, we will build your perfect Réunion escape.',
+      img: 'https://images.unsplash.com/photo-1589197331516-4d84b72ebde3?w=1600',
+    },
+    'Rodrigues': {
+      title: 'The Hidden Emerald',
+      desc: 'An unspoilt gem with creole soul. If you are looking for slow living, untouched lagoons, and authentic island life, let us curate your journey.',
+      img: 'https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?w=1600',
+    }
+  }
+
+  const currentCopy = destinationCopy[activeDestination] || destinationCopy['Seychelles']
+  const vibeOptions = ['Honeymoon & Romance', 'Family Escape', 'Ultra-Luxury & Privacy', 'Adventure & Hiking']
+
+  async function handleBespokeInquiry(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!inquiryVibe) return alert("Please select a travel vibe.")
+    
+    setIsSubmitting(true)
+    const formData = new FormData(e.currentTarget)
+
+    try {
+      await fetch('/api/enquiry', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: formData.get('name'),
+          email: formData.get('email'),
+          phone: formData.get('phone'),
+          party_size: formData.get('people'),
+          travel_start: formData.get('date'),
+          destination: activeDestination,
+          interests: `BESPOKE INQUIRY (${activeDestination}): Vibe: ${inquiryVibe}. Notes: ${formData.get('message')}`
+        })
+      })
+      setIsSuccess(true)
+    } catch (err) {
+      alert("Something went wrong. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <main className="min-h-screen bg-[#F5F0E6] font-sans text-[#1A1A1A] pb-24">
@@ -106,17 +167,122 @@ export default function ExperiencesPage() {
         </div>
       </section>
 
-      {/* EXPERIENCES GRID */}
+      {/* EXPERIENCES GRID OR INNOVATIVE EMPTY STATE */}
       <section className="px-6">
         <div className="max-w-7xl mx-auto">
           {loading ? (
             <p className="text-center text-gray-500">Loading experiences...</p>
           ) : filteredExperiences.length === 0 ? (
-            <div className="text-center py-20">
-              <p className="text-gray-500 text-lg">No experiences found for {activeDestination} in this category.</p>
-              <p className="text-sm text-gray-400 mt-2">We are currently expanding our catalogue here. Contact us for bespoke options.</p>
+            
+            /* --- THE NEW BESPOKE CURATION HUB --- */
+            <div className="bg-white border border-[#E5DFD3] shadow-2xl overflow-hidden grid md:grid-cols-2 animate-in fade-in duration-700">
+              
+              {/* Left: Image & Copy */}
+              <div className="relative min-h-[400px] md:min-h-full">
+                <img src={currentCopy.img} alt={activeDestination} className="absolute inset-0 w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#1B4D3E]/90 via-[#1B4D3E]/40 to-transparent" />
+                <div className="absolute bottom-0 left-0 p-10 md:p-12 text-white">
+                  <div className="flex items-center gap-2 text-xs tracking-widest uppercase text-[#C9A961] font-bold mb-4">
+                    <Compass size={16} /> Bespoke Curation
+                  </div>
+                  <h2 className="font-serif text-4xl md:text-5xl mb-4 leading-tight">
+                    Your {activeDestination},<br/>Crafted to You.
+                  </h2>
+                  <p className="text-lg text-white/80 font-light max-w-md">
+                    {currentCopy.desc}
+                  </p>
+                </div>
+              </div>
+
+              {/* Right: Interactive Form / Success Message */}
+              <div className="p-10 md:p-16 flex flex-col justify-center bg-[#FAF7F0]">
+                {isSuccess ? (
+                  <div className="text-center py-12">
+                    <CheckCircle2 size={56} className="text-[#3D8B8B] mx-auto mb-6" />
+                    <h3 className="font-serif text-3xl text-[#1B4D3E] mb-4">Your journey has begun.</h3>
+                    <p className="text-gray-600 mb-8 font-light">
+                      Our destination experts are already reviewing your preferences for {activeDestination}. Expect a beautifully crafted proposal in your inbox within 48 hours.
+                    </p>
+                    <button onClick={() => { setIsSuccess(false); setInquiryVibe(''); }} className="text-xs uppercase tracking-widest text-[#3D8B8B] font-bold border-b border-[#3D8B8B] pb-1">
+                      Send another request
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="font-serif text-3xl text-[#1B4D3E] mb-2">Tell us what you desire.</h3>
+                    <p className="text-sm text-gray-500 mb-8">Select your travel style and we will send you a tailored quote.</p>
+
+                    <form onSubmit={handleBespokeInquiry} className="space-y-6">
+                      
+                      {/* Innovative Style Selector */}
+                      <div>
+                        <label className="text-[10px] tracking-widest uppercase text-gray-500 font-bold block mb-3">What is the vibe of this trip? *</label>
+                        <div className="flex flex-wrap gap-2">
+                          {vibeOptions.map(style => (
+                            <button
+                              key={style}
+                              type="button"
+                              onClick={() => setInquiryVibe(style)}
+                              className={`px-4 py-2 text-xs border transition-all duration-300 ${
+                                inquiryVibe === style 
+                                  ? 'bg-[#1B4D3E] text-white border-[#1B4D3E]' 
+                                  : 'bg-white text-gray-600 border-[#E5DFD3] hover:border-[#C9A961]'
+                              }`}
+                            >
+                              {style}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[10px] tracking-widest uppercase text-gray-500 font-bold">Full Name *</label>
+                          <input required name="name" type="text" className="w-full border-b border-[#E5DFD3] py-2 text-sm focus:outline-none focus:border-[#C9A961] bg-transparent" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] tracking-widest uppercase text-gray-500 font-bold">Email *</label>
+                          <input required name="email" type="email" className="w-full border-b border-[#E5DFD3] py-2 text-sm focus:outline-none focus:border-[#C9A961] bg-transparent" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[10px] tracking-widest uppercase text-gray-500 font-bold">Phone *</label>
+                          <input required name="phone" type="tel" className="w-full border-b border-[#E5DFD3] py-2 text-sm focus:outline-none focus:border-[#C9A961] bg-transparent" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] tracking-widest uppercase text-gray-500 font-bold">Guests *</label>
+                          <input required name="people" type="number" min="1" placeholder="2" className="w-full border-b border-[#E5DFD3] py-2 text-sm focus:outline-none focus:border-[#C9A961] bg-transparent" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] tracking-widest uppercase text-gray-500 font-bold">Approx. Travel Date</label>
+                        <input name="date" type="date" className="w-full border-b border-[#E5DFD3] py-2 text-sm focus:outline-none focus:border-[#C9A961] bg-transparent text-gray-500" />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] tracking-widest uppercase text-gray-500 font-bold">Anything else we should know?</label>
+                        <textarea name="message" rows={2} placeholder="E.g., We love sailing, want a private villa..." className="w-full border-b border-[#E5DFD3] py-2 text-sm focus:outline-none focus:border-[#C9A961] bg-transparent resize-none"></textarea>
+                      </div>
+
+                      <button 
+                        type="submit" 
+                        disabled={isSubmitting || !inquiryVibe} 
+                        className="w-full bg-[#C9A961] text-[#1B4D3E] py-4 text-xs tracking-widest uppercase font-bold hover:bg-[#1B4D3E] hover:text-white transition disabled:opacity-50 flex items-center justify-center gap-2 mt-4"
+                      >
+                        {isSubmitting ? 'Sending Request...' : 'Request My Bespoke Quote'} <Send size={14} />
+                      </button>
+                    </form>
+                  </>
+                )}
+              </div>
             </div>
+            
           ) : (
+            
+            /* --- STANDARD EXPERIENCE GRID (Mauritius) --- */
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-12">
               {filteredExperiences.map((exp) => (
                 <div key={exp.id} className="group cursor-pointer flex flex-col">
@@ -162,7 +328,7 @@ export default function ExperiencesPage() {
         </div>
       </section>
 
-      {/* DETAIL MODAL */}
+      {/* DETAIL MODAL (Kept as is) */}
       {selectedExp && (
         <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-[#F5F0E6] w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl relative">

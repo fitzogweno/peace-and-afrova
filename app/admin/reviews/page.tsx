@@ -1,24 +1,25 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
 import { CheckCircle, XCircle, Star } from 'lucide-react'
 
 export default function AdminReviews() {
   const router = useRouter()
+  const pathname = usePathname()
   const [reviews, setReviews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const isLoggedIn = document.cookie.includes('admin_session=true')
-    if (!isLoggedIn) {
-      router.push('/admin/login')
-      return
-    }
+    async function initPage() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/admin/login')
+        return
+      }
 
-    async function fetchReviews() {
       const { data } = await supabase
         .from('reviews')
         .select('*')
@@ -27,8 +28,13 @@ export default function AdminReviews() {
       if (data) setReviews(data)
       setLoading(false)
     }
-    fetchReviews()
+    initPage()
   }, [router])
+
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    router.push('/admin/login')
+  }
 
   async function toggleApproval(id: string, currentStatus: boolean) {
     const { error } = await supabase
@@ -50,18 +56,16 @@ export default function AdminReviews() {
           <div className="font-serif text-xl">Peace and Afrova</div>
         </div>
         <nav className="space-y-4 flex-1 text-sm font-light tracking-wide">
-          <Link href="/admin" className="block opacity-70 hover:opacity-100 transition">Dashboard</Link>
-          <Link href="/admin/bookings" className="block opacity-70 hover:opacity-100 transition">Operations & Bookings</Link>
-          <Link href="/admin/finance" className="block opacity-70 hover:opacity-100 transition">Finance</Link>
-          <Link href="/admin/reviews" className="block text-[#C9A961]">Manage Reviews</Link>
-          <Link href="/admin/rates" className="block opacity-70 hover:opacity-100 transition">Rate Catalog</Link>
+          <Link href="/admin" className={`block transition ${pathname === '/admin' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Dashboard</Link>
+          <Link href="/admin/bookings" className={`block transition ${pathname === '/admin/bookings' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Operations & Bookings</Link>
+          <Link href="/admin/dispatch" className={`block transition ${pathname === '/admin/dispatch' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Dispatch Board</Link>
+          <Link href="/admin/suppliers" className={`block transition ${pathname === '/admin/suppliers' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Supplier Scorecard</Link>
+          <Link href="/admin/finance" className={`block transition ${pathname === '/admin/finance' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Finance</Link>
+          <Link href="/admin/reviews" className={`block transition ${pathname === '/admin/reviews' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Manage Reviews</Link>
+          <Link href="/admin/rates" className={`block transition ${pathname === '/admin/rates' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Rate Catalog</Link>
+          <Link href="/admin/partners" className={`block transition ${pathname === '/admin/partners' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>B2B Partners</Link>
         </nav>
-        <button onClick={() => {
-          document.cookie = "admin_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
-          router.push('/admin/login')
-        }} className="mt-8 text-xs tracking-widest uppercase opacity-70 hover:opacity-100 hover:text-red-300 text-left transition">
-          Sign Out
-        </button>
+        <button onClick={handleSignOut} className="mt-8 text-xs tracking-widest uppercase opacity-70 hover:opacity-100 hover:text-red-300 text-left transition">Sign Out</button>
       </aside>
 
       <main className="flex-1 p-6 md:p-12 overflow-auto">
@@ -87,14 +91,7 @@ export default function AdminReviews() {
                       {[...Array(review.rating)].map((_, i) => <Star key={i} size={14} fill="currentColor" />)}
                     </div>
                   </div>
-                  <button 
-                    onClick={() => toggleApproval(review.id, review.is_approved)}
-                    className={`flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-widest transition ${
-                      review.is_approved 
-                        ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100' 
-                        : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'
-                    }`}
-                  >
+                  <button onClick={() => toggleApproval(review.id, review.is_approved)} className={`flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-widest transition ${review.is_approved ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'}`}>
                     {review.is_approved ? <><XCircle size={14}/> Reject</> : <><CheckCircle size={14}/> Approve</>}
                   </button>
                 </div>

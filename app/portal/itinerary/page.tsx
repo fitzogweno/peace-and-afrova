@@ -71,9 +71,10 @@ function ItineraryContent() {
   const mapUrl = `https://maps.google.com/maps?saddr=Sir+Seewoosagur+Ramgoolam+International+Airport,+Mauritius&daddr=${encodeURIComponent(destination)}&output=embed`
 
   return (
-    <div className="min-h-screen bg-[#F5F0E6] py-8 px-4 md:py-16 md:px-8 font-sans text-[#1A1A1A]">
+    <div className="min-h-screen bg-[#F5F0E6] py-8 px-4 md:py-16 md:px-8 font-sans text-[#1A1A1A] print:bg-white print:p-0">
       
-      <div className="no-print max-w-4xl mx-auto mb-8 flex justify-between items-center">
+      {/* HEADER - HIDDEN ON PRINT */}
+      <div className="no-print print:hidden max-w-4xl mx-auto mb-8 flex justify-between items-center">
         <div>
           <h1 className="font-serif text-3xl text-[#1B4D3E]">Your Travel Itinerary</h1>
           <p className="text-xs tracking-widest uppercase text-gray-500 mt-1">Ref: {booking.booking_ref}</p>
@@ -96,7 +97,7 @@ function ItineraryContent() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 bg-[#FAF7F0] p-6 border border-[#E5DFD3]">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 bg-[#FAF7F0] p-6 border border-[#E5DFD3] print:bg-white print:border-gray-300">
           <div>
             <div className="text-xs tracking-widest uppercase text-[#3D8B8B] mb-1 font-medium">Guest</div>
             <div className="font-medium text-[#1B4D3E]">{booking.customer_name}</div>
@@ -115,20 +116,21 @@ function ItineraryContent() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6 mb-10">
+        <div className="grid md:grid-cols-2 gap-6 mb-10 break-inside-avoid">
           {weather && (
-            <div className="bg-[#1B4D3E] text-white p-6 flex items-center justify-between print:border print:border-[#1B4D3E]">
+            // FIXED: Added print:bg-white and print:text-black so it prints clearly
+            <div className="bg-[#1B4D3E] text-white p-6 flex items-center justify-between print:bg-white print:text-black print:border print:border-gray-300">
               <div>
                 <div className="text-xs tracking-widest uppercase text-[#C9A961] mb-1 font-medium">Mauritius Weather</div>
                 <div className="text-2xl font-serif">{Math.round(weather.main.temp)}°C · {weather.weather[0].main}</div>
-                <div className="text-xs opacity-70 mt-1">Live forecast for your arrival</div>
+                <div className="text-xs opacity-70 mt-1 print:text-gray-600">Live forecast for your arrival</div>
               </div>
               <CloudSun size={48} className="text-[#C9A961] opacity-80" />
             </div>
           )}
 
           {primaryTransfer && (
-            <div className="bg-white border border-[#C9A961] p-6 relative overflow-hidden">
+            <div className="bg-white border border-[#C9A961] p-6 relative overflow-hidden print:border-gray-300 break-inside-avoid">
               <div className="text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium flex items-center gap-2">
                 <Car size={14} /> Your Private Chauffeur
               </div>
@@ -140,11 +142,12 @@ function ItineraryContent() {
                     <span>Plate: <strong className="text-[#1B4D3E]">{primaryTransfer.vehicle_plate || 'TBC'}</strong></span>
                   </div>
                   {primaryTransfer.driver_phone && (
+                    // FIXED: Added print:hidden so the button doesn't break the printed layout
                     <a 
                       href={`https://wa.me/${primaryTransfer.driver_phone.replace(/\s+/g, '')}`} 
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 bg-green-600 text-white py-2 text-xs uppercase tracking-widest hover:bg-green-700 transition"
+                      className="flex items-center justify-center gap-2 bg-green-600 text-white py-2 text-xs uppercase tracking-widest hover:bg-green-700 transition print:hidden"
                     >
                       <MessageCircle size={14} /> Chat with Driver on WhatsApp
                     </a>
@@ -176,7 +179,7 @@ function ItineraryContent() {
         </div>
 
         <div className="space-y-8">
-          <div className="flex items-center gap-3 border-b border-[#E5DFD3] pb-2">
+          <div className="flex items-center gap-3 border-b border-[#E5DFD3] pb-2 break-inside-avoid">
             <Compass className="text-[#C9A961]" size={20} />
             <h2 className="font-serif text-2xl text-[#1B4D3E]">Your Private Arrangements</h2>
           </div>
@@ -184,17 +187,18 @@ function ItineraryContent() {
           {items.map((item: any, index: number) => {
             const savedBooking = supplierBookings.find((sb: any) => sb.service_description === item.description)
             return (
-              <div key={item.id} className="relative print-card pl-6 border-l-2 border-[#C9A961] flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+              // FIXED: Added break-inside-avoid so a service card never gets cut in half between pages
+              <div key={item.id} className="relative print-card pl-6 border-l-2 border-[#C9A961] flex flex-col md:flex-row gap-6 justify-between items-start md:items-center break-inside-avoid">
                 <div className="flex-1">
                   <div className="text-xs tracking-widest uppercase text-gray-400 mb-1">Service {index + 1}</div>
                   <h3 className="font-serif text-xl text-[#1B4D3E] mb-3">{item.description}</h3>
                   
                   {savedBooking ? (
-                    <span className="flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 px-3 py-1.5 border border-green-200">
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 px-3 py-1.5 border border-green-200 print:bg-white print:border-gray-300 print:text-black">
                       <CheckCircle size={14} /> Confirmed (Ref: {savedBooking.confirmation_number})
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1.5 text-xs font-medium text-orange-600 bg-orange-50 px-3 py-1.5 border border-orange-200">
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-orange-600 bg-orange-50 px-3 py-1.5 border border-orange-200 print:bg-white print:border-gray-300 print:text-black">
                       <Clock size={14} /> Pending Confirmation
                     </span>
                   )}
@@ -202,7 +206,7 @@ function ItineraryContent() {
 
                 {/* THE QR CODE */}
                 {savedBooking && (
-                  <div className="bg-white p-2 border border-[#E5DFD3] flex flex-col items-center">
+                  <div className="bg-white p-2 border border-[#E5DFD3] flex flex-col items-center break-inside-avoid">
                     <QRCode 
                       value={`https://peaceandafrova.com/driver/scan?voucherId=${savedBooking.id}&client=${encodeURIComponent(booking.customer_name)}`} 
                       size={100} 
@@ -215,7 +219,8 @@ function ItineraryContent() {
           })}
         </div>
 
-        <div className="mt-16 bg-[#1B4D3E] p-6 text-white text-center print:bg-transparent print:text-black print:border print:border-[#E5DFD3]">
+        {/* CONCIERGE BOX */}
+        <div className="mt-16 bg-[#1B4D3E] p-6 text-white text-center print:bg-white print:text-black print:border print:border-gray-300 break-inside-avoid">
           <h4 className="font-serif text-xl mb-2">Your Dedicated Concierge</h4>
           <p className="text-sm text-ivory/70 print:text-gray-600 mb-4">Should you require any assistance, please do not hesitate to contact us.</p>
           <div className="flex flex-col md:flex-row justify-center gap-6 text-sm">

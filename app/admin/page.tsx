@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../utils/supabase'
-import { Search, Hotel, Bell } from 'lucide-react'
+import { Search, Hotel, Bell, AlertCircle } from 'lucide-react'
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -12,18 +12,20 @@ export default function AdminDashboard() {
   const [allBookings, setAllBookings] = useState<any[]>([])
   const [pendingBookings, setPendingBookings] = useState<any[]>([])
   const [conciergeRequests, setConciergeRequests] = useState<any[]>([])
+  const [disruptions, setDisruptions] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const isLoggedIn = document.cookie.includes('admin_session=true')
-    if (!isLoggedIn) {
-      router.push('/admin/login')
-      return
-    }
+    async function initDashboard() {
+      // 1. Secure Auth Check
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/admin/login')
+        return
+      }
 
-    async function fetchData() {
-      // 1. Fetch New Enquiries
+      // 2. Fetch New Enquiries
       const { data: enqData } = await supabase
         .from('enquiries')
         .select(`*, customers (full_name, email, phone), quotations!left(id)`)
@@ -32,7 +34,7 @@ export default function AdminDashboard() {
       
       if (enqData) setEnquiries(enqData)
 
-      // 2. Fetch ALL Bookings
+      // 3. Fetch ALL Bookings
       const { data: bookData } = await supabase
         .from('bookings')
         .select(`*, quotations ( enquiries ( customers ( full_name, email ) ) )`)
@@ -40,7 +42,7 @@ export default function AdminDashboard() {
       
       if (bookData) setAllBookings(bookData)
 
-      // 3. Fetch Pending Payments
+      // 4. Fetch Pending Payments
       const { data: pendingData } = await supabase
         .from('bookings')
         .select(`*, payments ( id, amount )`)
@@ -48,7 +50,7 @@ export default function AdminDashboard() {
       
       if (pendingData) setPendingBookings(pendingData)
 
-      // 4. Fetch Concierge Requests
+      // 5. Fetch Concierge Requests
       const { data: conciergeData } = await supabase
         .from('concierge_requests')
         .select('*')
@@ -56,11 +58,27 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false })
       
       if (conciergeData) setConciergeRequests(conciergeData)
+
+      // 6. Fetch Live Disruptions (Phase 2 Engine)
+      const { data: disruptionData } = await supabase
+        .from('supplier_bookings')
+        .select(`
+          id, service_description, driver_name, original_pickup_time, pickup_time, delay_minutes, disruption_status,
+          quotations ( bookings ( customer_name ) )
+        `)
+        .in('disruption_status', ['Notified', 'Acknowledged'])
+      
+      if (disruptionData) setDisruptions(disruptionData)
       
       setLoading(false)
     }
-    fetchData()
+    initDashboard()
   }, [router])
+
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    router.push('/admin/login')
+  }
 
   async function handleConfirmPayment(bookingId: string, paymentId: string) {
     if (!confirm("Have you verified this deposit in your bank account?")) return
@@ -103,20 +121,54 @@ export default function AdminDashboard() {
         <nav className="space-y-4 flex-1 text-sm font-light tracking-wide">
           <Link href="/admin" className="block text-[#C9A961]">Dashboard</Link>
           <Link href="/admin/bookings" className="block opacity-70 hover:opacity-100 transition">Operations & Bookings</Link>
+          <Link href="/admin/dispatch" className="block opacity-70 hover:opacity-100 transition">Dispatch Board</Link>
+          <Link href="/admin/suppliers" className="block opacity-70 hover:opacity-100 transition">Supplier Scorecard</Link>
           <Link href="/admin/finance" className="block opacity-70 hover:opacity-100 transition">Finance</Link>
           <Link href="/admin/reviews" className="block opacity-70 hover:opacity-100 transition">Manage Reviews</Link>
           <Link href="/admin/rates" className="block opacity-70 hover:opacity-100 transition">Rate Catalog</Link>
         </nav>
-        <button onClick={() => {
-          document.cookie = "admin_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
-          router.push('/admin/login')
-        }} className="mt-8 text-xs tracking-widest uppercase opacity-70 hover:opacity-100 hover:text-red-300 text-left transition">
+        <button onClick={handleSignOut} className="mt-8 text-xs tracking-widest uppercase opacity-70 hover:opacity-100 hover:text-red-300 text-left transition">
           Sign Out
         </button>
       </aside>
 
       <main className="flex-1 p-6 md:p-12 overflow-auto">
         
+        {/* --- LIVE DISRUPTION ENGINE ALERTS --- */}
+        {disruptions.length > 0 && (
+          <div className="mb-8 space-y-4 animate-in fade-in slide-in-from-top-4">
+            <h2 className="font-serif text-2xl text-red-700 flex items-center gap-2">
+              <AlertCircle className="text-red-600" /> Live Operational Disruptions
+            </h2>
+            {disruptions.map(dis => {
+              const quotation = Array.isArray(dis.quotations) ? dis.quotations[0] : dis.quotations;
+              const booking = Array.isArray(quotation?.bookings) ? quotation.bookings[0] : quotation?.bookings;
+              
+              return (
+                <div key={dis.id} className="bg-red-50 border-l-4 border-red-600 p-4 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 uppercase tracking-wider font-bold">Flight Delayed {dis.delay_minutes}m</span>
+                      <span className="text-xs font-medium text-gray-600">{booking?.customer_name}</span>
+                    </div>
+                    <p className="text-sm font-medium text-[#1B4D3E]">
+                      Driver <strong>{dis.driver_name}</strong> notified. Original Pickup: <span className="line-through text-gray-400">{dis.original_pickup_time}</span> → New: <strong>{dis.pickup_time}</strong>
+                    </p>
+                    <p className="text-xs text-red-600 font-bold mt-1">
+                      Status: {dis.disruption_status === 'Notified' ? 'Awaiting Driver Acknowledgement' : 'Driver Acknowledged - En Route'}
+                    </p>
+                  </div>
+                  {dis.disruption_status === 'Notified' && (
+                    <div className="text-xs text-red-500 italic bg-white p-2 border border-red-200">
+                      Escalation rule: Call driver if unacknowledged in 15 mins.
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
         {/* Global Search Bar */}
         <div className="mb-8 flex justify-between items-center bg-white p-4 border border-[#E5DFD3] shadow-sm">
           <div className="flex items-center gap-2 w-full max-w-md">

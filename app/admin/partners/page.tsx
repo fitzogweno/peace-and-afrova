@@ -1,34 +1,35 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
 import { Building2, Mail, Phone, Calendar } from 'lucide-react'
 
 export default function AdminPartners() {
   const router = useRouter()
+  const pathname = usePathname()
   const [partners, setPartners] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const isLoggedIn = document.cookie.includes('admin_session=true')
-    if (!isLoggedIn) {
-      router.push('/admin/login')
-      return
-    }
-
-    async function fetchPartners() {
-      const { data, error } = await supabase
-        .from('partners')
-        .select('*')
-        .order('created_at', { ascending: false })
-      
+    async function checkAuthAndFetch() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/admin/login')
+        return
+      }
+      const { data, error } = await supabase.from('partners').select('*').order('created_at', { ascending: false })
       if (!error && data) setPartners(data)
       setLoading(false)
     }
-    fetchPartners()
+    checkAuthAndFetch()
   }, [router])
+
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    router.push('/admin/login')
+  }
 
   return (
     <div className="min-h-screen bg-[#F5F0E6] flex flex-col md:flex-row font-sans text-[#1A1A1A]">
@@ -39,18 +40,16 @@ export default function AdminPartners() {
           <div className="font-serif text-xl">Peace and Afrova</div>
         </div>
         <nav className="space-y-4 flex-1 text-sm font-light tracking-wide">
-          <Link href="/admin" className="block opacity-70 hover:opacity-100 transition">Dashboard</Link>
-          <Link href="/admin/bookings" className="block opacity-70 hover:opacity-100 transition">Operations & Bookings</Link>
-          <Link href="/admin/finance" className="block opacity-70 hover:opacity-100 transition">Finance</Link>
-          <Link href="/admin/partners" className="block text-[#C9A961]">B2B Partners</Link>
-          <Link href="/admin/rates" className="block opacity-70 hover:opacity-100 transition">Rate Catalog</Link>
+          <Link href="/admin" className={`block transition ${pathname === '/admin' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Dashboard</Link>
+          <Link href="/admin/bookings" className={`block transition ${pathname === '/admin/bookings' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Operations & Bookings</Link>
+          <Link href="/admin/dispatch" className={`block transition ${pathname === '/admin/dispatch' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Dispatch Board</Link>
+          <Link href="/admin/suppliers" className={`block transition ${pathname === '/admin/suppliers' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Supplier Scorecard</Link>
+          <Link href="/admin/finance" className={`block transition ${pathname === '/admin/finance' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Finance</Link>
+          <Link href="/admin/reviews" className={`block transition ${pathname === '/admin/reviews' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Manage Reviews</Link>
+          <Link href="/admin/rates" className={`block transition ${pathname === '/admin/rates' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Rate Catalog</Link>
+          <Link href="/admin/partners" className={`block transition ${pathname === '/admin/partners' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>B2B Partners</Link>
         </nav>
-        <button onClick={() => {
-          document.cookie = "admin_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
-          router.push('/admin/login')
-        }} className="mt-8 text-xs tracking-widest uppercase opacity-70 hover:opacity-100 hover:text-red-300 text-left transition">
-          Sign Out
-        </button>
+        <button onClick={handleSignOut} className="mt-8 text-xs tracking-widest uppercase opacity-70 hover:opacity-100 hover:text-red-300 text-left transition">Sign Out</button>
       </aside>
 
       <main className="flex-1 p-6 md:p-12 overflow-auto">
@@ -77,16 +76,13 @@ export default function AdminPartners() {
                   
                   <div className="flex flex-wrap gap-6 text-sm text-gray-500">
                     <span className="flex items-center gap-2"><Mail size={14}/> {partner.email}</span>
-                    {/* THE FIX IS HERE: Country code is now displayed */}
                     {partner.phone && <span className="flex items-center gap-2"><Phone size={14}/> {partner.country_code || ''} {partner.phone}</span>}
                     <span className="flex items-center gap-2"><Calendar size={14}/> {new Date(partner.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
                 
                 <div className="flex gap-2 w-full md:w-auto">
-                  <a href={`mailto:${partner.email}`} className="flex-1 md:flex-none text-center bg-[#1B4D3E] text-white px-6 py-3 text-xs uppercase tracking-widest hover:bg-[#C9A961] hover:text-[#1B4D3E] transition">
-                    Reply via Email
-                  </a>
+                  <a href={`mailto:${partner.email}`} className="flex-1 md:flex-none text-center bg-[#1B4D3E] text-white px-6 py-3 text-xs uppercase tracking-widest hover:bg-[#C9A961] hover:text-[#1B4D3E] transition">Reply via Email</a>
                 </div>
               </div>
             ))}
