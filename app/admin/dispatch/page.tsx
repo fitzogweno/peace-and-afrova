@@ -12,11 +12,9 @@ export default function DispatchBoard() {
   const [bookings, setBookings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   
-  // FIX: Initialize as empty string
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
-  // FIX: Set the date securely on the client side using local time
   useEffect(() => {
     const today = new Date()
     const year = today.getFullYear()
@@ -26,7 +24,7 @@ export default function DispatchBoard() {
   }, [])
 
   useEffect(() => {
-    if (!selectedDate) return
+    if (!selectedDate) return;
 
     let isActive = true
 
@@ -35,7 +33,6 @@ export default function DispatchBoard() {
 
       try {
         const { data: { session }, error: authError } = await supabase.auth.getSession()
-        
         if (authError) throw authError
         if (!session) {
           router.push('/admin/login')
@@ -52,15 +49,15 @@ export default function DispatchBoard() {
             )
           `)
           .order('id', { ascending: true })
-
+        
         if (error) throw error
         if (!isActive) return
 
         const mappedData = (data || []).map((item: any) => {
-          const quotation = Array.isArray(item.quotations) ? item.quotations[0] : item.quotations
-          const booking = Array.isArray(quotation?.bookings) ? quotation.bookings[0] : quotation?.bookings
-          const enquiry = Array.isArray(quotation?.enquiries) ? quotation.enquiries[0] : quotation?.enquiries
-
+          const quotation = Array.isArray(item.quotations) ? item.quotations[0] : item.quotations;
+          const booking = Array.isArray(quotation?.bookings) ? quotation.bookings[0] : quotation?.bookings;
+          const enquiry = Array.isArray(quotation?.enquiries) ? quotation.enquiries[0] : quotation?.enquiries;
+          
           return {
             id: item.id, service: item.service_description, pickup: item.pickup_time || '00:00',
             driver: item.driver_name, plate: item.vehicle_plate, ref: item.confirmation_number,
@@ -68,18 +65,17 @@ export default function DispatchBoard() {
             arrivalFlight: enquiry?.arrival_flight, departureFlight: enquiry?.departure_flight,
             hotel: enquiry?.hotel_details, carSeats: booking?.car_seats, dietary: booking?.dietary_needs
           }
-        }).filter((item: any) => item.travelStart === selectedDate)
+        }).filter((item: any) => item.travelStart === selectedDate);
 
-        if (isActive) setBookings(mappedData)
-
+        setBookings(mappedData)
       } catch (error) {
-        console.error('Error loading dispatch board:', error)
+        console.error("Error loading dispatch board:", error)
         if (isActive) setBookings([])
       } finally {
         if (isActive) setLoading(false)
       }
     }
-
+    
     initPage()
 
     return () => {
@@ -92,7 +88,6 @@ export default function DispatchBoard() {
     router.push('/admin/login')
   }
 
-  // FIX: Only update the UI if the API request succeeds
   async function handleUpdateTime(id: string, newTime: string) {
     setUpdatingId(id)
     try {
@@ -108,7 +103,6 @@ export default function DispatchBoard() {
       }
 
       setBookings(prev => prev.map(b => b.id === id ? { ...b, pickup: newTime } : b))
-
     } catch (error) {
       console.error('Pickup update failed:', error)
       alert('Unable to update pickup time. Please try again.')
@@ -117,10 +111,16 @@ export default function DispatchBoard() {
     }
   }
 
-  function handleCopyLink(jobId: string) {
-    const magicLink = `${window.location.origin}/driver/job/${jobId}`
-    navigator.clipboard.writeText(magicLink)
-    alert("✅ Magic Link copied to clipboard!\n\nYou can now paste this directly into the driver's WhatsApp.")
+  // --- IMPROVED COPY MAGIC LINK FUNCTION ---
+  async function handleCopyLink(jobId: string) {
+    try {
+      const magicLink = `${window.location.origin}/driver/job/${jobId}`
+      await navigator.clipboard.writeText(magicLink)
+      alert("✅ Magic Link copied successfully!\n\nYou can now paste this directly into the driver's WhatsApp.")
+    } catch (error) {
+      console.error('Copy failed:', error)
+      alert('Unable to copy link. Please try again.')
+    }
   }
 
   return (
