@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
-import { Calendar, RefreshCw, Plane, MapPin, User, AlertTriangle } from 'lucide-react'
+import { Calendar, RefreshCw, Plane, MapPin, User, AlertTriangle, Copy } from 'lucide-react'
 
 export default function DispatchBoard() {
   const router = useRouter()
@@ -73,6 +73,13 @@ export default function DispatchBoard() {
     setBookings(bookings.map(b => b.id === id ? { ...b, pickup: newTime } : b))
   }
 
+  // --- COPY MAGIC LINK FUNCTION ---
+  function handleCopyLink(jobId: string) {
+    const magicLink = `${window.location.origin}/driver/job/${jobId}`
+    navigator.clipboard.writeText(magicLink)
+    alert("✅ Magic Link copied to clipboard!\n\nYou can now paste this directly into the driver's WhatsApp.")
+  }
+
   return (
     <div className="min-h-screen bg-[#F5F0E6] flex flex-col md:flex-row font-sans text-[#1A1A1A]">
       
@@ -130,10 +137,37 @@ export default function DispatchBoard() {
                         </div>
                       </td>
                       <td className="p-4"><div className="font-medium">{b.service}</div><div className="text-xs text-gray-400">Ref: {b.ref}</div></td>
-                      <td className="p-4">{b.arrivalFlight && <div className="flex items-center gap-1 text-xs"><Plane size={12} className="text-blue-500"/> Arr: {b.arrivalFlight}</div>}{b.departureFlight && <div className="flex items-center gap-1 text-xs mt-1"><Plane size={12} className="text-orange-500 rotate-180"/> Dep: {b.departureFlight}</div>}</td>
+                      <td className="p-4">
+                        {b.arrivalFlight && <div className="flex items-center gap-1 text-xs"><Plane size={12} className="text-blue-500"/> Arr: {b.arrivalFlight}</div>}
+                        {b.departureFlight && <div className="flex items-center gap-1 text-xs mt-1"><Plane size={12} className="text-orange-500 rotate-180"/> Dep: {b.departureFlight}</div>}
+                      </td>
                       <td className="p-4"><div className="flex items-center gap-1 text-xs"><MapPin size={14} className="text-[#C9A961]" /> {b.hotel || 'TBC'}</div></td>
-                      <td className="p-4"><div className="flex items-center gap-2"><input type="time" defaultValue={b.pickup} onBlur={(e) => { if (e.target.value !== b.pickup) { handleUpdateTime(b.id, e.target.value); } }} className="border border-[#E5DFD3] p-2 rounded-sm text-sm focus:outline-none focus:border-[#C9A961] bg-white w-28" />{updatingId === b.id && <RefreshCw size={14} className="animate-spin text-[#C9A961]" />}</div></td>
-                      <td className="p-4">{b.driver ? <div><div className="flex items-center gap-1 font-medium text-[#1B4D3E]"><User size={14}/> {b.driver}</div><div className="text-xs mt-1 bg-gray-100 px-2 py-0.5 rounded text-gray-600 inline-block">{b.plate || 'No Plate'}</div></div> : <span className="text-xs text-orange-500 italic">Unassigned</span>}</td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <input type="time" defaultValue={b.pickup} onBlur={(e) => { if (e.target.value !== b.pickup) { handleUpdateTime(b.id, e.target.value); } }} className="border border-[#E5DFD3] p-2 rounded-sm text-sm focus:outline-none focus:border-[#C9A961] bg-white w-28" />
+                          {updatingId === b.id && <RefreshCw size={14} className="animate-spin text-[#C9A961]" />}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        {b.driver ? (
+                          <div>
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-1 font-medium text-[#1B4D3E]"><User size={14}/> {b.driver}</div>
+                              {/* COPY MAGIC LINK BUTTON */}
+                              <button 
+                                onClick={() => handleCopyLink(b.id)}
+                                className="text-[10px] bg-[#C9A961] text-[#1B4D3E] px-2 py-1 rounded-sm flex items-center gap-1 hover:bg-[#b09552] transition font-bold uppercase tracking-wider"
+                                title="Copy Driver Magic Link"
+                              >
+                                <Copy size={12} /> Link
+                              </button>
+                            </div>
+                            <div className="text-xs mt-1 bg-gray-100 px-2 py-0.5 rounded text-gray-600 inline-block">{b.plate || 'No Plate'}</div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-orange-500 italic">Unassigned</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
