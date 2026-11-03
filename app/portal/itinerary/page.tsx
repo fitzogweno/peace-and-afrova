@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../utils/supabase'
-import { Printer, MapPin, CheckCircle, Clock, Compass, Phone, Mail, Car, CloudSun, MessageCircle, Lock } from 'lucide-react'
+import { Printer, MapPin, CheckCircle, Clock, Compass, Phone, Mail, Car, CloudSun, MessageCircle, Lock, ShieldCheck } from 'lucide-react'
 import QRCode from 'react-qr-code'
 
 function ItineraryContent() {
@@ -18,9 +18,17 @@ function ItineraryContent() {
   useEffect(() => {
     if (!quoteRef) return
     async function fetchBooking() {
+      // Added service_credit to the query
       const { data } = await supabase
         .from('bookings')
-        .select(`*, quotations ( quotation_items ( * ), supplier_bookings ( * ), enquiries ( hotel_details, customers ( full_name ) ) )`)
+        .select(`
+          *, service_credit,
+          quotations ( 
+            quotation_items ( * ), 
+            supplier_bookings ( * ), 
+            enquiries ( hotel_details, customers ( full_name ) ) 
+          )
+        `)
         .eq('booking_ref', quoteRef)
         .single()
       
@@ -43,14 +51,15 @@ function ItineraryContent() {
     fetchBooking()
   }, [quoteRef])
 
+  // UPDATED: Fetching from our secure API instead of exposing the key
   async function fetchWeather() {
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
-    if (!apiKey) return
     try {
-      const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Port%20Louis,MU&units=metric&appid=${apiKey}`)
+      const res = await fetch('/api/weather?slug=mauritius')
       const data = await res.json()
-      if (data.main) setWeather(data)
-    } catch (err) {}
+      if (res.ok) setWeather(data)
+    } catch (err) {
+      console.error("Failed to load weather", err)
+    }
   }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-[#1B4D3E]">Loading...</div>
@@ -66,6 +75,7 @@ function ItineraryContent() {
   const hotelDetails = enquiry?.hotel_details || 'To be confirmed'
   
   const primaryTransfer = supplierBookings.length > 0 ? supplierBookings[0] : null
+  const serviceCredit = booking.service_credit || 0 // NEW: Get the service credit
 
   const destination = hotelDetails === 'To be confirmed' || !hotelDetails ? 'Port Louis, Mauritius' : hotelDetails
   const mapUrl = `https://maps.google.com/maps?saddr=Sir+Seewoosagur+Ramgoolam+International+Airport,+Mauritius&daddr=${encodeURIComponent(destination)}&output=embed`
@@ -86,6 +96,17 @@ function ItineraryContent() {
 
       <div className="max-w-4xl mx-auto bg-white shadow-xl border border-[#E5DFD3] print:shadow-none print:border-none p-8 md:p-12">
         
+        {/* SERVICE GUARANTEE BANNER */}
+        {serviceCredit > 0 && (
+          <div className="mb-8 bg-green-50 border border-green-200 p-4 flex items-start gap-3 rounded-sm print:hidden animate-in fade-in">
+            <ShieldCheck className="text-green-600 shrink-0 mt-0.5" size={24} />
+            <div>
+              <h4 className="font-bold text-green-800 text-sm">Service Guarantee Applied</h4>
+              <p className="text-sm text-green-700">As part of our Swiss Precision promise, a credit of <strong>Rs {serviceCredit.toLocaleString()}</strong> has been applied to your invoice due to a slight delay.</p>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row justify-between items-start border-b border-[#E5DFD3] pb-8 mb-8">
           <div>
             <div className="text-xs tracking-[0.3em] uppercase text-[#C9A961] mb-2 font-medium">Peace and Afrova</div>
@@ -118,12 +139,12 @@ function ItineraryContent() {
 
         <div className="grid md:grid-cols-2 gap-6 mb-10 break-inside-avoid">
           {weather && (
-            // FIXED: Added print:bg-white and print:text-black so it prints clearly
             <div className="bg-[#1B4D3E] text-white p-6 flex items-center justify-between print:bg-white print:text-black print:border print:border-gray-300">
               <div>
                 <div className="text-xs tracking-widest uppercase text-[#C9A961] mb-1 font-medium">Mauritius Weather</div>
-                <div className="text-2xl font-serif">{Math.round(weather.main.temp)}°C · {weather.weather[0].main}</div>
-                <div className="text-xs opacity-70 mt-1 print:text-gray-600">Live forecast for your arrival</div>
+                {/* UPDATED: Using new weather data shape */}
+                <div className="text-2xl font-serif">{Math.round(weather.temp)}°C · {weather.main}</div>
+                <div className="text-xs opacity-70 mt-1 print:text-gray-600 capitalize">{weather.description}</div>
               </div>
               <CloudSun size={48} className="text-[#C9A961] opacity-80" />
             </div>
@@ -142,7 +163,6 @@ function ItineraryContent() {
                     <span>Plate: <strong className="text-[#1B4D3E]">{primaryTransfer.vehicle_plate || 'TBC'}</strong></span>
                   </div>
                   {primaryTransfer.driver_phone && (
-                    // FIXED: Added print:hidden so the button doesn't break the printed layout
                     <a 
                       href={`https://wa.me/${primaryTransfer.driver_phone.replace(/\s+/g, '')}`} 
                       target="_blank"
@@ -187,7 +207,6 @@ function ItineraryContent() {
           {items.map((item: any, index: number) => {
             const savedBooking = supplierBookings.find((sb: any) => sb.service_description === item.description)
             return (
-              // FIXED: Added break-inside-avoid so a service card never gets cut in half between pages
               <div key={item.id} className="relative print-card pl-6 border-l-2 border-[#C9A961] flex flex-col md:flex-row gap-6 justify-between items-start md:items-center break-inside-avoid">
                 <div className="flex-1">
                   <div className="text-xs tracking-widest uppercase text-gray-400 mb-1">Service {index + 1}</div>
@@ -204,7 +223,6 @@ function ItineraryContent() {
                   )}
                 </div>
 
-                {/* THE QR CODE */}
                 {savedBooking && (
                   <div className="bg-white p-2 border border-[#E5DFD3] flex flex-col items-center break-inside-avoid">
                     <QRCode 
@@ -219,7 +237,6 @@ function ItineraryContent() {
           })}
         </div>
 
-        {/* CONCIERGE BOX */}
         <div className="mt-16 bg-[#1B4D3E] p-6 text-white text-center print:bg-white print:text-black print:border print:border-gray-300 break-inside-avoid">
           <h4 className="font-serif text-xl mb-2">Your Dedicated Concierge</h4>
           <p className="text-sm text-ivory/70 print:text-gray-600 mb-4">Should you require any assistance, please do not hesitate to contact us.</p>

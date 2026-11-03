@@ -3,6 +3,7 @@ import { Cormorant_Garamond, Inter } from "next/font/google";
 import "./globals.css";
 import AnnouncementBar from "./components/AnnouncementBar";
 import WhatsAppButton from "./components/WhatsAppButton";
+import Footer from "./components/Footer"; // <-- IMPORTED FOOTER
 import { AppProvider } from "./context/AppContext";
 
 const cormorant = Cormorant_Garamond({
@@ -32,6 +33,7 @@ export default function RootLayout({
         <AppProvider>
           <AnnouncementBar />
           {children}
+          <Footer /> {/* <-- ADDED FOOTER HERE */}
           <WhatsAppButton />
         </AppProvider>
       </body>
