@@ -1,9 +1,36 @@
 "use client"
 
 import Link from 'next/link'
-import { ArrowLeft, Compass, ShieldCheck, Heart, MapPin } from 'lucide-react'
+import { ArrowLeft, Compass, ShieldCheck, Heart, PlaneTakeoff, Key, Sparkles, MapPin } from 'lucide-react'
 
 export default function AboutPage() {
+  const destinations = [
+    {
+      name: 'Mauritius',
+      desc: 'Turquoise lagoons, lush mountains, and timeless creole hospitality.',
+      img: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&q=80',
+      link: '/destinations/mauritius'
+    },
+    {
+      name: 'Seychelles',
+      desc: 'Granite boulders, pristine beaches, and absolute, secluded luxury.',
+      img: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
+      link: '/destinations/seychelles'
+    },
+    {
+      name: 'Réunion Island',
+      desc: 'Volcanoes, dramatic cirques, and a wild playground for adventurers.',
+      img: 'https://images.unsplash.com/photo-1589197331516-4d84b72ebde3?w=800&q=80',
+      link: '/destinations/reunion'
+    },
+    {
+      name: 'Rodrigues',
+      desc: 'An unspoilt gem with a creole soul, untouched lagoons, and slow living.',
+      img: 'https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?w=800&q=80',
+      link: '/destinations/rodrigues'
+    },
+  ]
+
   return (
     <main className="min-h-screen bg-[#F5F0E6] font-sans text-[#1A1A1A] pb-24">
       
@@ -25,85 +52,117 @@ export default function AboutPage() {
       </nav>
 
       {/* HERO SECTION */}
-      <section className="pt-24 pb-16 px-6 text-center">
-        <div className="max-w-3xl mx-auto">
-          <Link href="/" className="inline-flex items-center gap-2 text-xs tracking-[0.2em] uppercase text-[#3D8B8B] hover:text-[#1B4D3E] transition mb-8">
+      <section className="pt-24 pb-20 px-6 text-center">
+        <div className="max-w-4xl mx-auto">
+          <Link href="/" className="inline-flex items-center gap-2 text-xs tracking-[0.2em] uppercase text-[#3D8B8B] hover:text-[#1B4D3E] transition mb-8 font-medium">
             <ArrowLeft size={16} /> Back to Home
           </Link>
           <h1 className="font-serif text-5xl md:text-7xl text-[#1B4D3E] mb-6 font-light leading-tight">
-            The Art of Indian Ocean Travel
+            The Art of Effortless Travel
           </h1>
           <div className="w-16 h-px bg-[#C9A961] mx-auto mb-8" />
-          <p className="text-xl text-[#4A4A4A] leading-relaxed font-light italic">
+          <p className="text-xl md:text-2xl text-[#4A4A4A] leading-relaxed font-light italic max-w-3xl mx-auto">
             "We don't just book trips. We architect memories that linger long after the tan fades."
           </p>
         </div>
       </section>
 
-      {/* THE PHILOSOPHY */}
-      <section className="px-6 py-12">
-        <div className="max-w-4xl mx-auto">
-          <div className="prose prose-lg text-[#4A4A4A] leading-relaxed font-light mx-auto space-y-6">
-            <p className="first-letter:text-5xl first-letter:font-serif first-letter:text-[#1B4D3E] first-letter:float-left first-letter:mr-3 first-letter:mt-1">
-              Peace and Afrova Group Company Ltd was founded on a singular obsession: to redefine luxury travel across the Indian Ocean. We saw a landscape of breathtaking islands—Mauritius, Seychelles, Réunion, and Rodrigues—and realized that the standard tourist experience did not do them justice.
-            </p>
-            <p>
-              We operate as a modern, remote-first Destination Management Company (DMC). By removing the overhead of a traditional brick-and-mortar agency, we invest entirely in what matters: <strong className="text-[#1B4D3E] font-medium">our people, our network, and our clients.</strong>
-            </p>
-            <p>
-              From our roots in Curepipe Forest Side, Mauritius, we have cultivated an exclusive network of vetted local partners, elite drivers, and master guides. We do not rely on third-party aggregators. We shake hands with our suppliers. This allows us to maintain absolute control over the quality of your journey, ensuring that whether you are seeking a private helicopter over the underwater waterfall or a secluded villa in Seychelles, it is executed flawlessly.
-            </p>
-          </div>
+      {/* THE CORE PHILOSOPHY */}
+      <section className="px-6 py-16 bg-white border-y border-[#E5DFD3]">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="font-serif text-3xl md:text-4xl text-[#1B4D3E] mb-8">
+            The Journey Is Yours. The Arrangements Are Ours.
+          </h2>
+          <p className="text-lg text-[#4A4A4A] leading-relaxed font-light max-w-3xl mx-auto mb-6">
+            Wealthy travellers do not pay for the absence of amenities; they pay for the absence of friction. Peace and Afrova Group Company Ltd was founded to eliminate the stress of coordinating different companies for airport transfers, hotels, activities, and departures.
+          </p>
+          <p className="text-lg text-[#4A4A4A] leading-relaxed font-light max-w-3xl mx-auto">
+            We operate as a modern, remote-first Destination Management Company (DMC). By acting as your single point of contact, we invest entirely in what matters: <strong className="text-[#1B4D3E] font-medium">our people, our network, and your peace of mind.</strong>
+          </p>
         </div>
       </section>
 
-      {/* THE THREE PILLARS */}
-      <section className="px-6 py-16 bg-[#FAF7F0] border-y border-[#E5DFD3]">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="font-serif text-3xl text-[#1B4D3E]">The Peace and Afrova Standard</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            
-            <div className="bg-white p-8 border border-[#E5DFD3] text-center hover:shadow-lg transition">
-              <Compass className="mx-auto text-[#C9A961] mb-4" size={32} strokeWidth={1.5} />
-              <h3 className="font-serif text-xl text-[#1B4D3E] mb-3">Swiss Precision</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Every transfer, flight, and reservation is timed to the minute. Our logistics are silent, seamless, and exact.
-              </p>
-            </div>
-
-            <div className="bg-white p-8 border border-[#E5DFD3] text-center hover:shadow-lg transition">
-              <Heart className="mx-auto text-[#C9A961] mb-4" size={32} strokeWidth={1.5} />
-              <h3 className="font-serif text-xl text-[#1B4D3E] mb-3">Mauritian Soul</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                We infuse every itinerary with the genuine warmth, creole hospitality, and vibrant culture of our islands.
-              </p>
-            </div>
-
-            <div className="bg-white p-8 border border-[#E5DFD3] text-center hover:shadow-lg transition">
-              <ShieldCheck className="mx-auto text-[#C9A961] mb-4" size={32} strokeWidth={1.5} />
-              <h3 className="font-serif text-xl text-[#1B4D3E] mb-3">Absolute Trust</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Transparent pricing. One dedicated point of contact. We treat every client as a VVIP, from enquiry to departure.
-              </p>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* OUR PROMISE (CTA BLOCK) */}
+      {/* THE ARRIVAL EXPERIENCE */}
       <section className="px-6 py-20">
-        <div className="max-w-3xl mx-auto bg-[#1B4D3E] p-10 md:p-16 text-center shadow-2xl relative overflow-hidden">
-          {/* Decorative Gold Line */}
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="font-serif text-3xl text-[#1B4D3E]">When You Arrive</h2>
+            <p className="text-sm tracking-widest uppercase text-[#C9A961] mt-2 font-bold">The Peace and Afrova Standard</p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-12 text-center">
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 rounded-full bg-[#FAF7F0] border border-[#E5DFD3] flex items-center justify-center mb-6">
+                <PlaneTakeoff className="text-[#C9A961]" size={28} strokeWidth={1.5} />
+              </div>
+              <h3 className="font-serif text-xl text-[#1B4D3E] mb-3">Seamless Arrival</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                From the moment you land, your luggage is handled and your private chauffeur is waiting. No queues, no confusion.
+              </p>
+            </div>
+            
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 rounded-full bg-[#FAF7F0] border border-[#E5DFD3] flex items-center justify-center mb-6">
+                <Key className="text-[#C9A961]" size={28} strokeWidth={1.5} />
+              </div>
+              <h3 className="font-serif text-xl text-[#1B4D3E] mb-3">Pre-Arranged Perfection</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Your villa is stocked, your dietary requirements are briefed, and every reservation is confirmed before you even check in.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 rounded-full bg-[#FAF7F0] border border-[#E5DFD3] flex items-center justify-center mb-6">
+                <Sparkles className="text-[#C9A961]" size={28} strokeWidth={1.5} />
+              </div>
+              <h3 className="font-serif text-xl text-[#1B4D3E] mb-3">Dedicated Concierge</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                One point of contact is available throughout your journey. If plans change, we fix it before you even notice.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* DESTINATIONS GRID */}
+      <section className="px-6 py-16 bg-[#FAF7F0] border-y border-[#E5DFD3]">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="font-serif text-3xl text-[#1B4D3E]">Our Indian Ocean</h2>
+            <p className="text-[#777777] mt-2 font-light">Curated journeys across four distinct island personalities.</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {destinations.map((dest) => (
+              <Link key={dest.name} href={dest.link} className="group relative overflow-hidden rounded-sm shadow-md h-80">
+                <img 
+                  src={dest.img} 
+                  alt={dest.name} 
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition duration-700" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#1B4D3E] via-[#1B4D3E]/40 to-transparent opacity-80" />
+                <div className="absolute bottom-0 left-0 p-6 text-white">
+                  <h3 className="font-serif text-2xl mb-2">{dest.name}</h3>
+                  <p className="text-xs text-white/80 font-light leading-relaxed opacity-0 group-hover:opacity-100 transition duration-300 transform translate-y-2 group-hover:translate-y-0">
+                    {dest.desc}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA BLOCK */}
+      <section className="px-6 py-24">
+        <div className="max-w-4xl mx-auto bg-[#1B4D3E] p-12 md:p-20 text-center shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#C9A961] to-transparent"></div>
           
-          <h3 className="font-serif text-3xl text-white mb-4">Our Promise to You</h3>
-          <p className="text-ivory/80 leading-relaxed mb-8 font-light">
-            You will never speak to a bot, chase a refund, or wonder where your driver is. When you travel with Peace and Afrova, you are not just a booking number. You are our guest.
+          <h3 className="font-serif text-3xl md:text-4xl text-white mb-6">Arrive as a guest. Leave with memories.</h3>
+          <p className="text-ivory/80 leading-relaxed mb-10 font-light max-w-2xl mx-auto text-lg">
+            We take care of the Indian Ocean in between. Your accommodation, airport reception, ground transportation, and experiences—thoughtfully coordinated through one company.
           </p>
-          <Link href="/bespoke" className="inline-block bg-[#C9A961] text-[#1B4D3E] px-8 py-4 text-xs font-bold tracking-widest uppercase hover:bg-white transition">
+          <Link href="/bespoke" className="inline-block bg-[#C9A961] text-[#1B4D3E] px-10 py-4 text-xs font-bold tracking-widest uppercase hover:bg-white transition-colors duration-300">
             Begin Your Journey
           </Link>
         </div>
