@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       .select(`
         id, 
         travel_start, 
-        enquiries ( id, arrival_flight, estimated_arrival, customers ( full_name ) ),
+        enquiries ( id, arrival_flight, estimated_arrival, customers ( full_name, email ) ),
         supplier_bookings ( id, driver_name, driver_phone, driver_email, pickup_time )
       `)
       .eq('booking_ref', bookingRef)
@@ -119,7 +119,7 @@ export async function POST(req: Request) {
           
           await sendWhatsAppMessage(formattedPhone, waMessage)
 
-          // Email Alert
+          // Driver Email Alert
           await resend.emails.send({
             from: 'Peace and Afrova <dispatch@peaceandafrova.com>',
             to: [supplierBooking.driver_email],
@@ -141,6 +141,36 @@ export async function POST(req: Request) {
               </div>
             `
           })
+        }
+
+        // 🧠 JOURNEY INTELLIGENCE ENGINE: Proactive Client Alert
+        if (customer?.email) {
+          try {
+            await resend.emails.send({
+              from: 'Peace and Afrova <concierge@peaceandafrova.com>',
+              to: [customer.email],
+              subject: `A quick update on your arrival in Mauritius`,
+              html: `
+                <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                  <h2 style="color: #1B4D3E;">A quick update on your arrival</h2>
+                  <p>Dear ${customer.full_name},</p>
+                  <p>We are monitoring your flight (<strong>${flightNumber}</strong>) and noticed it is currently delayed.</p>
+                  
+                  <div style="background-color: #FAF7F0; padding: 15px; border-left: 4px solid #C9A961; margin: 20px 0;">
+                    <p style="margin: 0;"><strong>New Estimated Arrival:</strong> ${new Date(estimatedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                    <p style="margin: 5px 0 0 0;"><strong>Your Chauffeur:</strong> We have already notified your driver of the new time. They will be waiting for you upon landing.</p>
+                  </div>
+                  
+                  <p>Please do not worry about a thing. Our team is tracking everything, and we will ensure your transfer remains perfectly seamless.</p>
+                  <br/>
+                  <p>Warm regards,</p>
+                  <p><strong>Your Journey Designers</strong><br/>Peace & Afrova</p>
+                </div>
+              `
+            })
+          } catch (emailErr) {
+            console.error("Failed to send client alert:", emailErr)
+          }
         }
       }
     }

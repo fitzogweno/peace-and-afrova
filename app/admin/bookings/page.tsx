@@ -18,6 +18,9 @@ export default function BookingsOperations() {
   const [calculatingDeparture, setCalculatingDeparture] = useState<string | null>(null)
   const [processingOfferId, setProcessingOfferId] = useState<string | null>(null)
 
+  // 🧠 JOURNEY INTELLIGENCE ENGINE: Driver Stats State
+  const [driverStats, setDriverStats] = useState<Record<string, any>>({})
+
   useEffect(() => {
     async function initPage() {
       const { data: { session } } = await supabase.auth.getSession()
@@ -26,6 +29,7 @@ export default function BookingsOperations() {
         return
       }
 
+      // 1. Fetch Bookings
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -44,6 +48,24 @@ export default function BookingsOperations() {
       
       if (error) console.error("Error fetching operations:", error)
       if (data) setBookings(data)
+
+      // 2. Fetch Driver Stats for Smart Assignment
+      const { data: allJobs } = await supabase
+        .from('supplier_bookings')
+        .select('driver_name, job_status, delay_minutes')
+        .not('driver_name', 'is', null)
+
+      if (allJobs) {
+        const stats = allJobs.reduce((acc: any, job: any) => {
+          const name = job.driver_name
+          if (!acc[name]) acc[name] = { total: 0, late: 0 }
+          acc[name].total += 1
+          if (job.delay_minutes > 0) acc[name].late += 1
+          return acc
+        }, {})
+        setDriverStats(stats)
+      }
+
       setLoading(false)
     }
     initPage()
@@ -65,8 +87,22 @@ export default function BookingsOperations() {
     setProcessingItemId(item.id)
     const confNumber = prompt(`Enter the ATS Confirmation Number for:\n${item.description}`)
     if (!confNumber) { setProcessingItemId(null); return; }
+    
     const driverName = prompt(`Enter the Driver's Name (e.g. Rishi):`)
     if (driverName === null) { setProcessingItemId(null); return; }
+
+    // 🧠 JOURNEY INTELLIGENCE ENGINE: Smart Assignment Check
+    const stats = driverStats[driverName]
+    if (stats && stats.total > 2) {
+      const lateRate = Math.round((stats.late / stats.total) * 100)
+      if (lateRate > 20) {
+        const proceed = confirm(
+          `⚠️ OPERATIONAL WARNING:\n\nDriver "${driverName}" has a ${lateRate}% late arrival rate (${stats.late} delays out of ${stats.total} jobs).\n\nAre you sure you want to assign this driver?`
+        )
+        if (!proceed) { setProcessingItemId(null); return; }
+      }
+    }
+
     const driverPhone = prompt(`Enter the Driver's Phone Number (e.g. +230 5740 0125):`)
     if (driverPhone === null) { setProcessingItemId(null); return; }
     const driverEmail = prompt(`Enter the Driver's Email Address (for job assignment):`)
