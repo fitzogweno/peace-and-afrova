@@ -1,193 +1,243 @@
 "use client"
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowRight, MapPin, Shield, Users, MessageCircle } from 'lucide-react'
+import { ArrowRight, ShieldCheck, Clock, HeartHandshake, UserCheck, MapPin, Compass, Star, Accessibility } from 'lucide-react'
 import { useApp } from './context/AppContext'
 import GlobalPreferences from './components/GlobalPreferences'
 
 export default function Home() {
   const { t } = useApp()
 
+  // --- SIGNATURE JOURNEYS DATA ---
+  const journeys = [
+    {
+      title: 'The Honeymoon Escape',
+      duration: '10 Days',
+      destination: 'Mauritius',
+      type: 'Honeymoon',
+      style: 'Luxury',
+      activity: 'Romantic Experiences',
+      image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&q=80',
+      tag: '01 · ROMANCE'
+    },
+    {
+      title: 'The Family Island Hopper',
+      duration: '12 Days',
+      destination: 'Multiple Islands',
+      type: 'Family',
+      style: 'Luxury',
+      activity: 'Family Experiences',
+      image: 'https://images.unsplash.com/photo-1602002418082-a4443e081dd1?w=800&q=80',
+      tag: '02 · FAMILY'
+    },
+    {
+      title: 'The Private Island Discovery',
+      duration: '5 Days',
+      destination: 'Mauritius',
+      type: 'VIP',
+      style: 'Ultra Luxury',
+      activity: 'Private Helicopter and Ocean Experiences',
+      image: 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=800&q=80',
+      tag: '03 · EXCLUSIVE'
+    }
+  ]
+
+  // --- GUEST JOURNAL DATA ---
+  const reviews = [
+    {
+      name: 'Sarah & James',
+      location: 'London, UK',
+      destination: 'Mauritius',
+      rating: 5,
+      text: 'An exceptional experience from the moment we arrived. The private transfer was seamless, and our driver was waiting with cold towels. It felt like true Swiss precision in the tropics.',
+      occasion: 'Honeymoon'
+    },
+    {
+      name: 'The Henderson Family',
+      location: 'Dubai, UAE',
+      destination: 'Mauritius & Rodrigues',
+      rating: 5,
+      text: 'Travelling with three young children is never easy, but Peace & Afrova handled everything. The car seats were ready, the villa was stocked, and the island hopper flight was a dream.',
+      occasion: 'Family Holiday'
+    },
+    {
+      name: 'Elena R.',
+      location: 'Paris, France',
+      destination: 'Seychelles',
+      rating: 5,
+      text: 'The yacht charter was the highlight of our lives. The crew knew exactly where to take us to avoid the crowds. We didn\'t have to lift a finger.',
+      occasion: 'Anniversary'
+    }
+  ]
+
   return (
-    <main className="min-h-screen bg-ivory">
+    <main className="min-h-screen bg-[#F5F0E6] font-sans text-[#1A1A1A]">
+      
       {/* NAVIGATION */}
       <nav className="absolute top-0 left-0 right-0 z-50 px-6 py-6 mt-[32px]">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            <div className="text-ivory">
-              <div className="text-xs tracking-luxury uppercase opacity-90">Peace and Afrova</div>
+            <div className="text-white">
+              <div className="text-xs tracking-[0.3em] uppercase opacity-90 font-light">Peace and Afrova</div>
               <div className="text-lg font-serif tracking-wider">Group Company Ltd</div>
             </div>
           </Link>
 
-          <div className="hidden md:flex items-center gap-8 text-ivory text-xs tracking-luxury uppercase">
-            {/* FIXED: Hardcoded Destinations so it doesn't show NAV.DESTINATIONS */}
-            <Link href="/destinations" className="hover:text-gold transition">Destinations</Link>
-            <Link href="/experiences" className="hover:text-gold transition">{t('nav.experiences')}</Link>
-            <Link href="/bespoke" className="hover:text-gold transition">{t('nav.bespoke')}</Link>
-            <Link href="/about" className="hover:text-gold transition">{t('nav.about')}</Link>
-            <Link href="/contact" className="hover:text-gold transition">{t('nav.contact')}</Link>
+          <div className="hidden md:flex items-center gap-8 text-white text-xs tracking-[0.2em] uppercase font-light">
+            <Link href="/destinations" className="hover:text-[#C9A961] transition">Destinations</Link>
+            <Link href="/experiences" className="hover:text-[#C9A961] transition">{t('nav.experiences') || 'Experiences'}</Link>
+            <Link href="/bespoke" className="hover:text-[#C9A961] transition">{t('nav.bespoke') || 'Bespoke'}</Link>
+            <Link href="/about" className="hover:text-[#C9A961] transition">{t('nav.about') || 'About'}</Link>
+            <Link href="/partners" className="hover:text-[#C9A961] transition">Travel Trade</Link>
 
-            <div className="border-l border-ivory/30 pl-8">
+            <div className="border-l border-white/30 pl-8">
               <GlobalPreferences />
             </div>
           </div>
         </div>
       </nav>
 
-      {/* HERO - CINEMATIC VIDEO BACKGROUND */}
+      {/* HERO */}
       <section className="relative h-[calc(100vh-32px)] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 w-full h-full overflow-hidden">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            className="absolute inset-0 w-full h-full object-cover"
-            poster="https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=2000"
-          >
-            <source
-              src="https://res.cloudinary.com/ey8jd5oe/video/upload/v1792921746/hero.mp4"
-              type="video/mp4"
-            />
+        <div className="absolute inset-0 w-full h-full">
+          <video autoPlay loop muted playsInline preload="auto" className="absolute inset-0 w-full h-full object-cover" poster="https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=2000">
+            <source src="https://res.cloudinary.com/ey8jd5oe/video/upload/v1792921746/hero.mp4" type="video/mp4" />
           </video>
         </div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#1B4D3E]/70 via-[#1B4D3E]/40 to-[#1B4D3E]/80" />
 
-        <div className="absolute inset-0 bg-gradient-to-b from-ocean/70 via-ocean/40 to-ocean/80" />
-
-        <div className="relative z-10 text-center text-ivory px-6 max-w-4xl mt-12">
-          <div className="label-luxury text-gold mb-6">
-            Private Island Experiences · Thoughtfully Curated
-          </div>
-
-          <h1 className="font-serif text-5xl md:text-7xl mb-8 leading-tight whitespace-pre-line">
-            The Indian Ocean,<br />on your own terms.
-          </h1>
-          <p className="text-lg md:text-xl opacity-90 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
-            Discover Mauritius, Seychelles, Reunion Island, and Rodrigues through exceptional private experiences, thoughtfully designed around you.
-          </p>
-
+        <div className="relative z-10 text-center text-white px-6 max-w-4xl mt-12">
+          <div className="text-xs tracking-[0.3em] uppercase text-[#C9A961] mb-6 font-bold">Private Island Experiences · Thoughtfully Curated</div>
+          <h1 className="font-serif text-5xl md:text-7xl mb-8 leading-tight">The Indian Ocean,<br/>on your own terms.</h1>
+          <p className="text-lg md:text-xl opacity-90 max-w-2xl mx-auto mb-12 font-light leading-relaxed">Discover Mauritius, Seychelles, Reunion Island, and Rodrigues through exceptional private experiences, thoughtfully designed around you.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/experiences" className="btn-gold">
-              Explore Experiences
-            </Link>
-            <Link href="/bespoke" className="btn-outline">
-              Plan Bespoke Travel
-            </Link>
+            <Link href="/experiences" className="bg-[#C9A961] text-[#1B4D3E] px-8 py-4 text-xs tracking-widest uppercase font-bold hover:bg-white transition">Explore Experiences</Link>
+            <Link href="/bespoke" className="border border-white text-white px-8 py-4 text-xs tracking-widest uppercase font-bold hover:bg-white/10 transition">Plan Bespoke Travel</Link>
           </div>
         </div>
       </section>
 
       {/* INTRO */}
-      <section className="py-32 px-6 bg-ivory">
+      <section className="py-32 px-6 bg-[#F5F0E6]">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="label-luxury mb-6">Our Approach</div>
-          <h2 className="font-serif text-4xl md:text-5xl text-ocean mb-8 leading-tight">
-            Your islands. Your pace.
-          </h2>
-          <div className="divider-gold mx-auto mb-8" />
-          <p className="text-lg text-charcoal-soft leading-relaxed font-light">
-            Every journey begins with what matters to you. Tell us what you love,
-            and we will coordinate the right experiences through our network of
-            trusted local partners across the Indian Ocean — with the precision of Swiss hospitality and the warmth of island soil.
-          </p>
+          <div className="text-[10px] tracking-[0.3em] uppercase text-[#777777] mb-6 font-bold">Our Approach</div>
+          <h2 className="font-serif text-4xl md:text-5xl text-[#1B4D3E] mb-8 leading-tight">Your islands. Your pace.</h2>
+          <div className="w-16 h-px bg-[#C9A961] mx-auto mb-8" />
+          <p className="text-lg text-[#4A4A4A] leading-relaxed font-light">Every journey begins with what matters to you. Tell us what you love, and we will coordinate the right experiences through our network of trusted local partners across the Indian Ocean — with the precision of Swiss hospitality and the warmth of island soil.</p>
         </div>
       </section>
 
-      {/* WHY US */}
-      <section className="py-28 px-6 bg-ocean text-ivory">
+      {/* 03. SIGNATURE JOURNEYS */}
+      <section className="py-24 px-6 bg-white border-y border-[#E5DFD3]">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <div className="label-luxury text-gold mb-4">The Details</div>
-            <h2 className="font-serif text-4xl md:text-5xl">
-              The details make the difference
-            </h2>
-            <div className="divider-gold mx-auto mt-6" />
+            <div className="text-[10px] tracking-[0.3em] uppercase text-[#C9A961] mb-4 font-bold">The Signature Journeys</div>
+            <h2 className="font-serif text-4xl text-[#1B4D3E] mb-4">Curated inspirations. Entirely your own.</h2>
           </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {journeys.map((journey) => {
+              const params = new URLSearchParams({ destination: journey.destination, journey_type: journey.type, duration: journey.duration, style: journey.style, activity: journey.activity }).toString()
+              return (
+                <article key={journey.title} className="group flex flex-col">
+                  <div className="relative aspect-[4/5] overflow-hidden mb-6">
+                    <img src={journey.image} alt={journey.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
+                    <div className="absolute top-4 left-4 bg-[#1B4D3E] text-[#C9A961] px-3 py-1 text-[10px] font-bold uppercase tracking-widest">{journey.tag}</div>
+                  </div>
+                  <div className="flex-1 flex flex-col">
+                    <div className="flex justify-between items-center text-[10px] tracking-widest uppercase text-[#777777] font-bold mb-2"><span>{journey.destination}</span><span>{journey.duration}</span></div>
+                    <h3 className="font-serif text-2xl text-[#1B4D3E] mb-3">{journey.title}</h3>
+                    <p className="text-sm text-[#777777] font-light leading-relaxed mb-6 flex-1">A thoughtfully designed journey combining luxury stays, private experiences, and seamless coordination.</p>
+                    <Link href={`/bespoke?${params}`} className="inline-flex items-center gap-2 text-xs tracking-widest uppercase text-[#1B4D3E] font-bold border-b border-[#C9A961] pb-1 self-start hover:text-[#C9A961] transition">Design this journey <ArrowRight size={14} /></Link>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </div>
+      </section>
 
-          <div className="grid md:grid-cols-4 gap-12 text-center">
-            <div>
-              <Users className="mx-auto mb-6 text-gold" size={32} strokeWidth={1.5} />
-              <h3 className="font-serif text-xl mb-3">Selected Partners</h3>
-              <p className="text-sm opacity-70 leading-relaxed">A vetted network of local experts — drivers, guides, hosts.</p>
+      {/* --- INCLUSIVE JOURNEYS SECTION --- */}
+      <section className="py-24 px-6 bg-[#F5F0E6]">
+        <div className="max-w-5xl mx-auto">
+          <div className="bg-[#1B4D3E] text-white overflow-hidden shadow-2xl flex flex-col md:flex-row">
+            <div className="md:w-1/2 relative min-h-[400px]">
+              <img src="https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?w=1200&q=80" alt="Accessible boardwalk over the ocean" className="absolute inset-0 w-full h-full object-cover" />
             </div>
-            <div>
-              <Shield className="mx-auto mb-6 text-gold" size={32} strokeWidth={1.5} />
-              <h3 className="font-serif text-xl mb-3">Clear Proposals</h3>
-              <p className="text-sm opacity-70 leading-relaxed">Personalised, itemised, and transparent from the first message.</p>
-            </div>
-            <div>
-              <MapPin className="mx-auto mb-6 text-gold" size={32} strokeWidth={1.5} />
-              <h3 className="font-serif text-xl mb-3">Coordinated Travel</h3>
-              <p className="text-sm opacity-70 leading-relaxed">Bookings, timings, and logistics handled end to end.</p>
-            </div>
-            <div>
-              <MessageCircle className="mx-auto mb-6 text-gold" size={32} strokeWidth={1.5} />
-              <h3 className="font-serif text-xl mb-3">One Point of Contact</h3>
-              <p className="text-sm opacity-70 leading-relaxed">A dedicated person, reachable throughout your journey.</p>
+            <div className="md:w-1/2 p-10 md:p-16 flex flex-col justify-center">
+              <div className="flex items-center gap-2 text-[10px] tracking-[0.3em] uppercase text-[#C9A961] mb-6 font-bold">
+                <Accessibility size={16} /> Peace and Afrova · Inclusive Journeys
+              </div>
+              <h2 className="font-serif text-3xl md:text-4xl mb-6 leading-tight">The world belongs to everyone.</h2>
+              <p className="text-white/80 font-light leading-relaxed mb-6 text-sm md:text-base">We believe extraordinary travel should be accessible to all. From carefully selected accommodation to thoughtfully arranged experiences, we design journeys around individual needs, preferences and comfort.</p>
+              <p className="font-serif italic text-xl text-[#C9A961] mb-10">Travel differently. Experience everything.</p>
+              <Link href="/bespoke?journey_type=Inclusive" className="inline-block border border-[#C9A961] text-[#C9A961] px-8 py-4 text-xs tracking-widest uppercase font-bold text-center hover:bg-[#C9A961] hover:text-[#1B4D3E] transition duration-300">Plan an Inclusive Journey</Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-32 px-6 bg-ivory-warm border-t border-line">
+      {/* 04. THE CONCIERGE PROMISE */}
+      <section className="py-24 px-6 bg-white border-y border-[#E5DFD3]">
+        <div className="max-w-5xl mx-auto text-center">
+          <div className="text-[10px] tracking-[0.3em] uppercase text-[#C9A961] mb-6 font-bold">The Peace and Afrova Standard</div>
+          <h2 className="font-serif text-4xl md:text-5xl text-[#1B4D3E] mb-8">Excellence is in every detail.</h2>
+          <p className="text-lg text-[#4A4A4A] font-light max-w-2xl mx-auto mb-16">From your first enquiry to your final departure, every detail matters. Our commitment is to deliver a seamless, considered and personal experience throughout your journey.</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
+            <div className="flex flex-col items-center"><Clock className="text-[#C9A961] mb-4" size={32} strokeWidth={1.5} /><h3 className="font-bold text-sm mb-2 uppercase tracking-wider text-[#1B4D3E]">Punctuality</h3><p className="text-xs text-[#777777] leading-relaxed">Carefully coordinated arrivals and transfers.</p></div>
+            <div className="flex flex-col items-center"><UserCheck className="text-[#C9A961] mb-4" size={32} strokeWidth={1.5} /><h3 className="font-bold text-sm mb-2 uppercase tracking-wider text-[#1B4D3E]">Personal Attention</h3><p className="text-xs text-[#777777] leading-relaxed">A dedicated approach to every guest.</p></div>
+            <div className="flex flex-col items-center"><ShieldCheck className="text-[#C9A961] mb-4" size={32} strokeWidth={1.5} /><h3 className="font-bold text-sm mb-2 uppercase tracking-wider text-[#1B4D3E]">Reliability</h3><p className="text-xs text-[#777777] leading-relaxed">Trusted local partners and clear communication.</p></div>
+            <div className="flex flex-col items-center"><HeartHandshake className="text-[#C9A961] mb-4" size={32} strokeWidth={1.5} /><h3 className="font-bold text-sm mb-2 uppercase tracking-wider text-[#1B4D3E]">Care</h3><p className="text-xs text-[#777777] leading-relaxed">Thoughtful attention from beginning to end.</p></div>
+          </div>
+          <div className="border-t border-[#E5DFD3] pt-10"><p className="font-serif italic text-2xl text-[#C9A961]">"Luxury is not what we promise. It is what you experience."</p></div>
+        </div>
+      </section>
+
+      {/* 05. THE GUEST JOURNAL (MARQUEE) */}
+      <section className="py-24 bg-[#F5F0E6] overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 text-center mb-16">
+          <div className="text-[10px] tracking-[0.3em] uppercase text-[#C9A961] mb-4 font-bold">The Guest Journal</div>
+          <h2 className="font-serif text-4xl text-[#1B4D3E] mb-4">Experiences that stay with you.</h2>
+          <p className="text-[#777777] font-light">A collection of moments and memories shared by our guests.</p>
+        </div>
+        <div className="relative w-full flex overflow-x-hidden group">
+          <div className="flex animate-marquee whitespace-nowrap gap-8 py-4 hover:[animation-play-state:paused]">
+            {[...reviews, ...reviews].map((review, index) => (
+              <div key={index} className="bg-white p-8 border border-[#E5DFD3] shadow-sm flex flex-col w-[350px] md:w-[450px] shrink-0 whitespace-normal">
+                <div className="flex gap-1 text-[#C9A961] mb-6">{[...Array(review.rating)].map((_, i) => <Star key={i} size={16} fill="currentColor" />)}</div>
+                <p className="text-[#4A4A4A] font-light leading-relaxed italic mb-8 flex-1">"{review.text}"</p>
+                <div className="border-t border-[#E5DFD3] pt-4">
+                  <div className="font-bold text-[#1B4D3E] text-sm">{review.name}</div>
+                  <div className="text-xs text-[#777777]">{review.location} · {review.occasion}</div>
+                  <div className="text-[10px] text-[#C9A961] uppercase tracking-widest mt-1 font-bold flex items-center gap-1"><MapPin size={10} /> {review.destination}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 07. CTA */}
+      <section className="py-32 px-6 bg-white border-t border-[#E5DFD3]">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="label-luxury mb-6">Begin</div>
-          <h2 className="font-serif text-4xl md:text-5xl text-ocean mb-6">
-            Plan something exceptional
-          </h2>
-          <div className="divider-gold mx-auto mb-8" />
-          <p className="text-lg text-charcoal-soft mb-12 font-light">
-            Tell us about your trip, and receive a proposal tailored to your needs.
-          </p>
-          <Link href="/bespoke" className="btn-primary">
-            Begin Your Enquiry
-          </Link>
+          <div className="text-[10px] tracking-[0.3em] uppercase text-[#777777] mb-6 font-bold">Begin</div>
+          <h2 className="font-serif text-4xl md:text-5xl text-[#1B4D3E] mb-6">Plan something exceptional</h2>
+          <div className="w-16 h-px bg-[#C9A961] mx-auto mb-8" />
+          <p className="text-lg text-[#4A4A4A] mb-12 font-light">Tell us about your trip, and receive a proposal tailored to your needs.</p>
+          <Link href="/bespoke" className="inline-block bg-[#1B4D3E] text-white px-10 py-4 text-xs tracking-widest uppercase font-bold hover:bg-[#C9A961] hover:text-[#1B4D3E] transition">Begin Your Enquiry</Link>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-ocean text-ivory/70 py-16 px-6">
+      <footer className="bg-[#1B4D3E] text-white/70 py-16 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
-            <div>
-              <div className="text-xs tracking-luxury uppercase text-gold mb-2">
-                Peace and Afrova
-              </div>
-              <div className="font-serif text-lg text-ivory">Group Company Ltd</div>
-            </div>
-            <div>
-              <div className="text-xs tracking-luxury uppercase mb-4 text-ivory/50">Explore</div>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="/destinations" className="hover:text-gold transition">Destinations</Link></li>
-                <li><Link href="/experiences" className="hover:text-gold transition">Experiences</Link></li>
-                <li><Link href="/bespoke" className="hover:text-gold transition">Bespoke Travel</Link></li>
-                <li><Link href="/careers" className="hover:text-gold transition">Careers</Link></li>
-                <li><Link href="/partners" className="hover:text-gold transition">Travel Partners</Link></li>
-              </ul>
-            </div>
-            <div>
-              <div className="text-xs tracking-luxury uppercase mb-4 text-ivory/50">Legal</div>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="/portal/login" className="hover:text-gold transition">Client Portal</Link></li>
-                <li><Link href="/policies/terms" className="hover:text-gold transition">Terms</Link></li>
-                <li><Link href="/policies/privacy" className="hover:text-gold transition">Privacy</Link></li>
-              </ul>
-            </div>
-            <div>
-              <div className="text-xs tracking-luxury uppercase mb-4 text-ivory/50">Contact</div>
-              <ul className="space-y-2 text-sm">
-                <li>Curepipe Forest Side, Mauritius</li>
-                <li>hello@peaceandafrova.com</li>
-              </ul>
-            </div>
+            <div><div className="text-xs tracking-[0.3em] uppercase text-[#C9A961] mb-2 font-bold">Peace and Afrova</div><div className="font-serif text-lg text-white mb-4">Group Company Ltd</div><p className="text-xs font-light">Curating exceptional Indian Ocean journeys with absolute precision.</p></div>
+            <div><div className="text-[10px] tracking-[0.3em] uppercase mb-4 text-[#C9A961] font-bold">Destinations</div><ul className="space-y-2 text-xs"><li><Link href="/destinations/mauritius" className="hover:text-white transition">Mauritius</Link></li><li><Link href="/destinations/rodrigues" className="hover:text-white transition">Rodrigues</Link></li><li><Link href="/destinations/reunion" className="hover:text-white transition">Réunion</Link></li><li><Link href="/destinations/seychelles" className="hover:text-white transition">Seychelles</Link></li></ul></div>
+            <div><div className="text-[10px] tracking-[0.3em] uppercase mb-4 text-[#C9A961] font-bold">Company</div><ul className="space-y-2 text-xs"><li><Link href="/about" className="hover:text-white transition">About Us</Link></li><li><Link href="/journeys" className="hover:text-white transition">Signature Journeys</Link></li><li><Link href="/partners" className="hover:text-white transition">Travel Partners</Link></li><li><Link href="/contact" className="hover:text-white transition">Contact Us</Link></li></ul></div>
+            <div><div className="text-[10px] tracking-[0.3em] uppercase mb-4 text-[#C9A961] font-bold">Contact</div><ul className="space-y-2 text-xs"><li>Curepipe Forest Side, Mauritius</li><li>hello@peaceandafrova.com</li><li>+230 5740 0125</li></ul></div>
           </div>
-          <div className="border-t border-ivory/10 pt-8 text-xs text-ivory/40 flex flex-col md:flex-row justify-between gap-4">
-            <div>© 2026 Peace and Afrova Group Company Ltd.</div>
-            <div>VAT Registered · Mauritius</div>
-          </div>
+          <div className="border-t border-white/10 pt-8 text-xs text-white/40 flex flex-col md:flex-row justify-between gap-4"><div>© 2026 Peace and Afrova Group Company Ltd.</div><div className="flex gap-4"><Link href="/policies/terms" className="hover:text-white transition">Terms</Link><Link href="/policies/privacy" className="hover:text-white transition">Privacy</Link></div></div>
         </div>
       </footer>
     </main>

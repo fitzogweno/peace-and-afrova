@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCircle, Accessibility } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
 function BespokeForm() {
@@ -18,7 +18,6 @@ function BespokeForm() {
   const activityParam = searchParams.get('activity') || ''
   const totalSteps = 5
 
-  // Base ranges in MUR (AppContext will convert automatically)
   const hotelRanges = [10000, 20000, 40000, 75000]
   const totalRanges = [150000, 250000, 500000, 1000000]
 
@@ -43,6 +42,8 @@ function BespokeForm() {
     departure_flight: '',
     dietary_requirements: '',
     mobility_requirements: '',
+    accessibility_needs: [] as string[],
+    accessibility_notes: '',
     name: '',
     email: '',
     phone: '',
@@ -62,7 +63,7 @@ function BespokeForm() {
     }
   }
 
-  const handleArrayToggle = (field: 'destinations' | 'experiences', value: string) => {
+  const handleArrayToggle = (field: 'destinations' | 'experiences' | 'accessibility_needs', value: string) => {
     setFormData(prev => {
       const current = prev[field]
       const updated = current.includes(value) 
@@ -109,10 +110,17 @@ function BespokeForm() {
     if (formData.children !== '0') finalInterests += `CHILDREN AGES: ${formData.child_ages || 'Not provided'}.\n`
     if (formData.arrival_flight) finalInterests += `FLIGHTS: Arr ${formData.arrival_flight} / Dep ${formData.departure_flight}.\n`
     finalInterests += `ARRANGEMENTS: ${formData.needs_transfers ? 'Needs Transfers. ' : ''}${formData.needs_chauffeur ? 'Needs Chauffeur. ' : ''}\n`
+    
+    // INCLUSIVE JOURNEYS DATA MAPPING
+    if (formData.accessibility_needs.length > 0 || formData.accessibility_notes) {
+      finalInterests += `\n--- INCLUSIVE JOURNEY REQUIREMENTS ---\n`
+      if (formData.accessibility_needs.length > 0) finalInterests += `Needs: ${formData.accessibility_needs.join(', ')}\n`
+      if (formData.accessibility_notes) finalInterests += `Notes: ${formData.accessibility_notes}\n`
+    }
+
     finalInterests += `TOTAL BUDGET: ${formData.total_budget || 'Not specified'}.\n`
     finalInterests += `CONTACT VIA: ${formData.contact_method}.\n`
     if (formData.dietary_requirements) finalInterests += `DIETARY: ${formData.dietary_requirements}.\n`
-    if (formData.mobility_requirements) finalInterests += `MOBILITY: ${formData.mobility_requirements}.\n`
 
     const payload = {
       name: formData.name,
@@ -138,13 +146,11 @@ function BespokeForm() {
         body: JSON.stringify(payload),
       })
 
-      // FIXED: Read the JSON response to get the exact error
       const responseData = await res.json()
 
       if (res.ok) {
         router.push('/bespoke/thank-you')
       } else {
-        // Show the exact error from the API!
         setErrorMsg(responseData.error || 'Something went wrong. Please try again.')
         setIsSubmitting(false)
       }
@@ -245,6 +251,7 @@ function BespokeForm() {
                       <option value="Family Holiday">Family Holiday</option>
                       <option value="Adventure & Discovery">Adventure & Discovery</option>
                       <option value="Wellness Retreat">Wellness Retreat</option>
+                      <option value="Inclusive">Inclusive Journey</option>
                     </select>
                   </div>
                   <div>
@@ -403,9 +410,36 @@ function BespokeForm() {
                   <label className="block text-[10px] tracking-widest uppercase text-[#1B4D3E] mb-2 font-bold">Dietary Requirements</label>
                   <input type="text" name="dietary_requirements" value={formData.dietary_requirements} onChange={handleChange} placeholder="e.g. Vegan, Nut allergy, Halal" className="w-full border-b border-[#E5DFD3] bg-transparent py-2 text-sm focus:outline-none focus:border-[#C9A961]" />
                 </div>
-                <div>
-                  <label className="block text-[10px] tracking-widest uppercase text-[#1B4D3E] mb-2 font-bold">Mobility or Accessibility Needs</label>
-                  <input type="text" name="mobility_requirements" value={formData.mobility_requirements} onChange={handleChange} placeholder="e.g. Wheelchair access required" className="w-full border-b border-[#E5DFD3] bg-transparent py-2 text-sm focus:outline-none focus:border-[#C9A961]" />
+
+                {/* --- NEW: INCLUSIVE JOURNEYS SECTION --- */}
+                <div className="bg-[#FAF7F0] border border-[#C9A961] p-6 mt-8">
+                  <h3 className="font-serif text-xl text-[#1B4D3E] mb-2 flex items-center gap-2">
+                    <Accessibility size={20} className="text-[#C9A961]" /> Inclusive Travel Requirements
+                  </h3>
+                  <p className="text-xs text-[#777777] mb-4">Please help us understand any specific accessibility or support requirements you or your party may have.</p>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                    {[
+                      'Mobility / wheelchair access', 'Reduced mobility', 'Visual impairment', 
+                      'Hearing impairment', 'Neurodiversity / sensory', 'Age-related assistance', 
+                      'Travelling with a carer', 'Other requirements'
+                    ].map(need => (
+                      <CheckboxCard key={need} label={need} selected={formData.accessibility_needs.includes(need)} onClick={() => handleArrayToggle('accessibility_needs', need)} />
+                    ))}
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] tracking-widest uppercase text-[#1B4D3E] mb-2 font-bold">What would help us make your journey comfortable, enjoyable and stress-free?</label>
+                    <textarea 
+                      name="accessibility_notes" 
+                      value={formData.accessibility_notes} 
+                      onChange={handleChange} 
+                      rows={3} 
+                      placeholder="e.g. We require a roll-in shower and a vehicle with a ramp..." 
+                      className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961] bg-white resize-none"
+                    ></textarea>
+                    <p className="text-[10px] text-gray-400 mt-1 italic">Please do not disclose medical diagnoses. We only need to know the assistance you require.</p>
+                  </div>
                 </div>
               </div>
             )}
