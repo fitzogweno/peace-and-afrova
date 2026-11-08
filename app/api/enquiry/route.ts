@@ -1,51 +1,135 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    const data = await req.json()
+    
+    // 1. Validate required fields
+    if (!data.name || !data.email || !data.phone) {
+      return NextResponse.json({ error: "Missing required contact fields." }, { status: 400 })
+    }
 
-    // 1. Insert the Customer
-    const { data: customer, error: customerError } = await supabase
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!, 
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    const resend = new Resend(process.env.RESEND_API_KEY)
+
+    // 2. Check if customer exists, if not, create them
+    let customerId = null
+    const { data: existingCustomer } = await supabase
       .from('customers')
-      .insert({
-        full_name: body.name,
-        email: body.email,
-        phone: body.phone,
-        country: body.country,
-        source: 'website'
-      })
-      .select()
-      .single()
+      .select('id')
+      .eq('email', data.email)
+      .maybeSingle()
 
-    if (customerError) throw customerError
+    if (existingCustomer) {
+      customerId = existingCustomer.id
+    } else {
+      const { data: newCustomer, error: customerError } = await supabase
+        .from('customers')
+        .insert({ full_name: data.name, email: data.email, phone: data.phone, country: data.country })
+        .select('id')
+        .single()
+      
+      if (customerError) throw customerError
+      customerId = newCustomer.id
+    }
 
-    // 2. Insert the Enquiry (With Flight & Dietary Data)
+    // 3. Insert the Enquiry
     const { error: enquiryError } = await supabase
       .from('enquiries')
       .insert({
-        customer_id: customer.id,
-        travel_start: body.travel_start,
-        party_size: parseInt(body.party_size),
-        interests: body.interests,
-        has_hotel: body.has_hotel,
-        hotel_details: body.hotel_details,
-        hotel_budget: body.hotel_budget,
-        hotel_location: body.hotel_location,
-        hotel_vibe: body.hotel_vibe,
-        product_interest: body.product_interest,
-        arrival_flight: body.arrival_flight,      // <-- NEW
-        departure_flight: body.departure_flight,  // <-- NEW
-        dietary_requirements: body.dietary_requirements, // <-- NEW
-        status: 'new'
+        customer_id: customerId,
+        travel_start: data.travel_start,
+        party_size: data.party_size,
+        destination: data.destination,
+        interests: data.interests,
+        has_hotel: data.has_hotel,
+        hotel_details: data.hotel_details,
+        hotel_budget: data.hotel_budget,
+        hotel_location: data.hotel_location,
+        hotel_vibe: data.hotel_vibe,
+        product_interest: data.product_interest
       })
 
     if (enquiryError) throw enquiryError
 
+    // 4. Send Email to YOU (Admin Alert)
+    try {
+      await resend.emails.send({
+        from: 'Peace and Afrova <system@peaceandafrova.com>',
+        to: ['hello@peaceandafrova.com'],
+        subject: `🔔 New Journey Request: ${data.name}`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #1B4D3E;">New Bespoke Enquiry</h2>
+            <p><strong>Client:</strong> ${data.name} (${data.email})</p>
+            <p><strong>Destinations:</strong> ${data.destination}</p>
+            <p><strong>Travel Date:</strong> ${data.travel_start}</p>
+            <p><strong>Party:</strong> ${data.party_size}</p>
+            <div style="background-color: #FAF7F0; padding: 15px; border-left: 4px solid #C9A961; margin: 20px 0;">
+              <p style="margin: 0; white-space: pre-wrap;">${data.interests}</p>
+            </div>
+            <a href="https://peaceandafrova.com/admin" style="background-color: #1B4D3E; color: white; padding: 10px 20px; text-decoration: none; display: inline-block;">Open Admin Dashboard</a>
+          </div>
+        `
+      })
+    } catch (err) {
+      console.error("Admin email failed:", err)
+    }
+
+    // 5. Send Auto-Responder to CLIENT
+    try {
+      await resend.emails.send({
+        from: 'Peace and Afrova <hello@peaceandafrova.com>',
+        to: [data.email],
+        subject: `We have received your journey request, ${data.name.split(' ')[0]}`,
+        html: `
+          <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #F5F0E6;">
+            <div style="text-align: center; margin-bottom: 40px;">
+              <h1 style="color: #1B4D3E; font-size: 28px; font-weight: normal; margin-bottom: 10px;">Peace & Afrova</h1>
+              <div style="width: 50px; height: 1px; background-color: #C9A961; margin: 0 auto;"></div>
+            </div>
+            
+            <div style="background-color: #FFFFFF; padding: 40px; border: 1px solid #E5DFD3;">
+              <h2 style="color: #1B4D3E; font-size: 22px; margin-top: 0;">Your journey has begun.</h2>
+              
+              <p style="color: #1A1A1A; font-size: 15px; line-height: 1.6;">Dear ${data.name.split(' ')[0]},</p>
+              
+              <p style="color: #1A1A1A; font-size: 15px; line-height: 1.6;">Thank you for sharing your vision with us. We are delighted that you are considering Peace & Afrova for your Indian Ocean escape.</p>
+              
+              <p style="color: #1A1A1A; font-size: 15px; line-height: 1.6;">Our Journey Designers are currently reviewing your preferences and details. We are meticulously crafting a bespoke proposal tailored to your exact desires.</p>
+
+              <div style="background-color: #FAF7F0; padding: 20px; border-left: 4px solid #C9A961; margin: 30px 0;">
+                <p style="margin: 0; color: #4A4A4A; font-size: 14px;"><strong>Your Request Summary:</strong></p>
+                <p style="margin: 10px 0 0 0; color: #1A1A1A; font-size: 14px;">
+                  Destinations: ${data.destination}<br/>
+                  Travel Date: ${data.travel_start}<br/>
+                  Party: ${data.party_size}
+                </p>
+              </div>
+              
+              <p style="color: #1A1A1A; font-size: 15px; line-height: 1.6;">You can expect to hear from us within <strong>24 to 48 hours</strong> with a personalised itinerary and quotation.</p>
+              
+              <p style="color: #1A1A1A; font-size: 15px; line-height: 1.6;">If you have any immediate questions or wish to add further details to your request, simply reply to this email or reach us on WhatsApp.</p>
+              
+              <p style="color: #1A1A1A; font-size: 15px; line-height: 1.6; margin-top: 40px;">Warm regards,</p>
+              <p style="color: #1A1A1A; font-size: 15px; line-height: 1.6;"><strong>Your Journey Designers</strong><br/>Peace & Afrova</p>
+            </div>
+          </div>
+        `
+      })
+    } catch (err) {
+      console.error("Client auto-responder failed:", err)
+      // We don't throw here because the enquiry is already saved successfully
+    }
+
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('ENQUIRY API ERROR:', error)
+    console.error("ENQUIRY API ERROR:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

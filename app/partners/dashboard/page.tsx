@@ -4,35 +4,34 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
-import { LayoutDashboard, Calendar, FileText, Send, Settings, LogOut, Building2, Bell } from 'lucide-react'
+import { LayoutDashboard, Calendar, FileText, Send, Settings, LogOut, Building2, Bell, AlertCircle } from 'lucide-react'
 
 export default function PartnerDashboard() {
   const router = useRouter()
   const pathname = usePathname()
   const [partner, setPartner] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
     async function initPage() {
-      // 1. Secure Auth Check
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
-        router.push('/partner/login')
+        router.push('/partners/login')
         return
       }
 
-      // 2. Fetch Partner Company Record
       const { data, error } = await supabase
         .from('partners')
         .select('*')
         .eq('email', session.user.email)
         .single()
 
-      if (data) {
-        setPartner(data)
+      if (error || !data) {
+        console.error("Partner record not found for email:", session.user.email)
+        setErrorMsg(`We could not find a partner account linked to ${session.user.email}. Please contact the DMC administrator.`)
       } else {
-        // If they are logged in but not in the partners table, something is wrong
-        console.error("Partner record not found for this email.")
+        setPartner(data)
       }
       setLoading(false)
     }
@@ -41,10 +40,25 @@ export default function PartnerDashboard() {
 
   async function handleSignOut() {
     await supabase.auth.signOut()
-    router.push('/partner/login')
+    router.push('/partners/login')
   }
 
   if (loading) return <div className="min-h-screen bg-[#F5F0E6] flex items-center justify-center text-[#1B4D3E]">Loading Partner Portal...</div>
+
+  if (errorMsg) {
+    return (
+      <div className="min-h-screen bg-[#F5F0E6] flex items-center justify-center p-6">
+        <div className="bg-white p-8 max-w-md text-center shadow-lg border border-[#E5DFD3]">
+          <AlertCircle className="mx-auto text-red-500 mb-4" size={48} />
+          <h1 className="font-serif text-2xl text-[#1B4D3E] mb-2">Account Error</h1>
+          <p className="text-gray-600 mb-6">{errorMsg}</p>
+          <button onClick={handleSignOut} className="bg-[#1B4D3E] text-white px-6 py-3 text-xs uppercase tracking-widest font-bold hover:bg-[#C9A961] transition">
+            Return to Login
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#F5F0E6] flex flex-col md:flex-row font-sans text-[#1A1A1A]">
@@ -58,25 +72,25 @@ export default function PartnerDashboard() {
         </div>
         
         <nav className="space-y-4 flex-1 text-sm font-light tracking-wide">
-          <Link href="/partner/dashboard" className={`flex items-center gap-3 transition ${pathname === '/partner/dashboard' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>
+          <Link href="/partners/dashboard" className={`flex items-center gap-3 transition ${pathname === '/partners/dashboard' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>
             <LayoutDashboard size={16} /> Overview
           </Link>
-          <Link href="/partner/dashboard/requests" className="flex items-center gap-3 opacity-70 hover:opacity-100 transition">
+          <Link href="/partners/dashboard/requests" className={`flex items-center gap-3 transition ${pathname === '/partners/dashboard/requests' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>
             <Bell size={16} /> Service Requests
           </Link>
-          <Link href="/partner/dashboard/bookings" className="flex items-center gap-3 opacity-70 hover:opacity-100 transition">
+          <Link href="/partners/dashboard/bookings" className={`flex items-center gap-3 transition ${pathname === '/partners/dashboard/bookings' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>
             <Calendar size={16} /> My Bookings
           </Link>
-          <Link href="/partner/dashboard/quotations" className="flex items-center gap-3 opacity-70 hover:opacity-100 transition">
+          <Link href="/partners/dashboard/quotations" className={`flex items-center gap-3 transition ${pathname === '/partners/dashboard/quotations' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>
             <FileText size={16} /> Quotations
           </Link>
-          <Link href="/partner/dashboard/invoices" className="flex items-center gap-3 opacity-70 hover:opacity-100 transition">
+          <Link href="/partners/dashboard/invoices" className={`flex items-center gap-3 transition ${pathname === '/partners/dashboard/invoices' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>
             <Send size={16} /> Invoices
           </Link>
-          <Link href="/partner/dashboard/profile" className="flex items-center gap-3 opacity-70 hover:opacity-100 transition">
+          <Link href="/partners/dashboard/profile" className={`flex items-center gap-3 transition ${pathname === '/partners/dashboard/profile' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>
             <Building2 size={16} /> Company Profile
           </Link>
-          <Link href="/partner/dashboard/settings" className="flex items-center gap-3 opacity-70 hover:opacity-100 transition">
+          <Link href="/partners/dashboard/settings" className={`flex items-center gap-3 transition ${pathname === '/partners/dashboard/settings' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>
             <Settings size={16} /> Settings
           </Link>
         </nav>
@@ -90,7 +104,6 @@ export default function PartnerDashboard() {
       <main className="flex-1 p-6 md:p-12 overflow-auto">
         <h1 className="font-serif text-4xl text-[#1B4D3E] mb-8">Welcome, {partner?.contact_name?.split(' ')[0]}</h1>
         
-        {/* PLACEHOLDER WIDGETS (To be built next) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div className="bg-white p-6 shadow-sm border border-[#E5DFD3]">
             <div className="text-xs tracking-widest uppercase text-gray-500 mb-2 font-medium">New Requests</div>

@@ -1,35 +1,26 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
 import { Clock, CheckCircle, FileText, Send, Navigation, RefreshCw, PlaneTakeoff, AlertCircle, UserCheck } from 'lucide-react'
 
 export default function BookingsOperations() {
   const router = useRouter()
-  const pathname = usePathname()
   const [bookings, setBookings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  
-  // UI Locks
   const [processingItemId, setProcessingItemId] = useState<string | null>(null)
   const [trackingBookingRef, setTrackingBookingRef] = useState<string | null>(null)
   const [calculatingDeparture, setCalculatingDeparture] = useState<string | null>(null)
   const [processingOfferId, setProcessingOfferId] = useState<string | null>(null)
-
-  // 🧠 JOURNEY INTELLIGENCE ENGINE: Driver Stats State
   const [driverStats, setDriverStats] = useState<Record<string, any>>({})
 
   useEffect(() => {
     async function initPage() {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        router.push('/admin/login')
-        return
-      }
+      if (!session) { router.push('/admin/login'); return }
 
-      // 1. Fetch Bookings
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -49,7 +40,6 @@ export default function BookingsOperations() {
       if (error) console.error("Error fetching operations:", error)
       if (data) setBookings(data)
 
-      // 2. Fetch Driver Stats for Smart Assignment
       const { data: allJobs } = await supabase
         .from('supplier_bookings')
         .select('driver_name, job_status, delay_minutes')
@@ -65,16 +55,10 @@ export default function BookingsOperations() {
         }, {})
         setDriverStats(stats)
       }
-
       setLoading(false)
     }
     initPage()
   }, [router])
-
-  async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.push('/admin/login')
-  }
 
   const getEnquiryData = (booking: any) => {
     const quotation = Array.isArray(booking.quotations) ? booking.quotations[0] : booking.quotations;
@@ -91,23 +75,20 @@ export default function BookingsOperations() {
     const driverName = prompt(`Enter the Driver's Name (e.g. Rishi):`)
     if (driverName === null) { setProcessingItemId(null); return; }
 
-    // 🧠 JOURNEY INTELLIGENCE ENGINE: Smart Assignment Check
     const stats = driverStats[driverName]
     if (stats && stats.total > 2) {
       const lateRate = Math.round((stats.late / stats.total) * 100)
       if (lateRate > 20) {
-        const proceed = confirm(
-          `⚠️ OPERATIONAL WARNING:\n\nDriver "${driverName}" has a ${lateRate}% late arrival rate (${stats.late} delays out of ${stats.total} jobs).\n\nAre you sure you want to assign this driver?`
-        )
+        const proceed = confirm(`⚠️ OPERATIONAL WARNING:\n\nDriver "${driverName}" has a ${lateRate}% late arrival rate (${stats.late} delays out of ${stats.total} jobs).\n\nAre you sure you want to assign this driver?`)
         if (!proceed) { setProcessingItemId(null); return; }
       }
     }
 
-    const driverPhone = prompt(`Enter the Driver's Phone Number (e.g. +230 5740 0125):`)
+    const driverPhone = prompt(`Enter the Driver's Phone Number:`)
     if (driverPhone === null) { setProcessingItemId(null); return; }
-    const driverEmail = prompt(`Enter the Driver's Email Address (for job assignment):`)
+    const driverEmail = prompt(`Enter the Driver's Email Address:`)
     if (driverEmail === null) { setProcessingItemId(null); return; }
-    const vehiclePlate = prompt(`Enter the Vehicle Plate Number (e.g. 1234 AB 56):`)
+    const vehiclePlate = prompt(`Enter the Vehicle Plate Number:`)
     if (vehiclePlate === null) { setProcessingItemId(null); return; }
 
     const enquiry = getEnquiryData(booking);
@@ -214,169 +195,146 @@ export default function BookingsOperations() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F0E6] flex flex-col md:flex-row font-sans text-[#1A1A1A]">
+    <div className="max-w-7xl mx-auto">
+      <h1 className="font-serif text-4xl text-[#1B4D3E] mb-8">Operations Desk</h1>
       
-      <aside className="w-full md:w-64 bg-[#1B4D3E] text-white p-6 flex flex-col print:hidden">
-        <div className="mb-12">
-          <div className="text-xs tracking-[0.3em] uppercase text-[#C9A961] mb-1">Admin</div>
-          <div className="font-serif text-xl">Peace and Afrova</div>
+      {loading ? (
+        <p className="text-[#4A4A4A]">Loading confirmed bookings...</p>
+      ) : bookings.length === 0 ? (
+        <div className="bg-white p-8 text-center text-[#4A4A4A] shadow-sm border border-[#E5DFD3]">
+          <p>No confirmed bookings yet. Confirm a deposit on the dashboard to see it here.</p>
         </div>
-        <nav className="space-y-4 flex-1 text-sm font-light tracking-wide">
-          <Link href="/admin" className={`block transition ${pathname === '/admin' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Dashboard</Link>
-          <Link href="/admin/bookings" className={`block transition ${pathname === '/admin/bookings' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Operations & Bookings</Link>
-          <Link href="/admin/dispatch" className={`block transition ${pathname === '/admin/dispatch' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Dispatch Board</Link>
-          <Link href="/admin/suppliers" className={`block transition ${pathname === '/admin/suppliers' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Supplier Scorecard</Link>
-          <Link href="/admin/finance" className={`block transition ${pathname === '/admin/finance' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Finance</Link>
-          <Link href="/admin/reviews" className={`block transition ${pathname === '/admin/reviews' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Manage Reviews</Link>
-          <Link href="/admin/rates" className={`block transition ${pathname === '/admin/rates' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>Rate Catalog</Link>
-          <Link href="/admin/partners" className={`block transition ${pathname === '/admin/partners' ? 'text-[#C9A961]' : 'opacity-70 hover:opacity-100'}`}>B2B Partners</Link>
-        </nav>
-        <button onClick={handleSignOut} className="mt-8 text-xs tracking-widest uppercase opacity-70 hover:opacity-100 hover:text-red-300 text-left transition">Sign Out</button>
-      </aside>
+      ) : (
+        <div className="space-y-6">
+          {bookings.map((booking) => {
+            const enquiry = getEnquiryData(booking);
+            const quotation = Array.isArray(booking.quotations) ? booking.quotations[0] : booking.quotations;
+            const items = quotation?.quotation_items || []
+            const supplierBookings = quotation?.supplier_bookings || []
+            const grossProfit = calculateGP(items)
+            const hasPendingOffer = quotation?.counter_offer_status === 'Pending'
 
-      <main className="flex-1 p-6 md:p-12 overflow-auto">
-        <h1 className="font-serif text-4xl text-[#1B4D3E] mb-8">Operations Desk</h1>
-        
-        {loading ? (
-          <p className="text-[#4A4A4A]">Loading confirmed bookings...</p>
-        ) : bookings.length === 0 ? (
-          <div className="bg-white p-8 text-center text-[#4A4A4A] shadow-sm border border-[#E5DFD3]">
-            <p>No confirmed bookings yet. Confirm a deposit on the dashboard to see it here.</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {bookings.map((booking) => {
-              const enquiry = getEnquiryData(booking);
-              const quotation = Array.isArray(booking.quotations) ? booking.quotations[0] : booking.quotations;
-              const items = quotation?.quotation_items || []
-              const supplierBookings = quotation?.supplier_bookings || []
-              const grossProfit = calculateGP(items)
-              
-              const hasPendingOffer = quotation?.counter_offer_status === 'Pending'
-
-              return (
-                <div key={booking.id} className="bg-white shadow-sm border border-[#E5DFD3] overflow-hidden">
-                  {hasPendingOffer && (
-                    <div className="bg-red-50 border-l-4 border-red-500 p-4 flex flex-col md:flex-row justify-between items-center gap-4">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="text-red-500 shrink-0 mt-1" size={24} />
-                        <div>
-                          <h4 className="font-bold text-red-800 text-sm">Client Requested to Tailor Proposal</h4>
-                          <p className="text-sm text-red-600 mb-2">{quotation.amendment_request}</p>
-                          <p className="text-xs text-red-500">Original Total: Rs {quotation.total?.toLocaleString('en-US', { maximumFractionDigits: 0 })}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 w-full md:w-auto">
-                        <button onClick={() => {
-                            const newTotalStr = prompt("Enter the NEW total amount (Rs):", quotation.total);
-                            if (!newTotalStr) return;
-                            const newTotal = parseFloat(newTotalStr);
-                            if (isNaN(newTotal)) return alert("Invalid number");
-                            handleProcessCounterOffer(quotation.id, 'accept', newTotal);
-                          }}
-                          disabled={processingOfferId === quotation.id}
-                          className="flex-1 md:flex-none bg-green-600 text-white px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-green-700 transition disabled:opacity-50"
-                        >
-                          Accept & Update Price
-                        </button>
-                        <button onClick={() => handleProcessCounterOffer(quotation.id, 'decline')} disabled={processingOfferId === quotation.id} className="flex-1 md:flex-none bg-gray-600 text-white px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-gray-700 transition disabled:opacity-50">Decline</button>
+            return (
+              <div key={booking.id} className="bg-white shadow-sm border border-[#E5DFD3] overflow-hidden">
+                {hasPendingOffer && (
+                  <div className="bg-red-50 border-l-4 border-red-500 p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="text-red-500 shrink-0 mt-1" size={24} />
+                      <div>
+                        <h4 className="font-bold text-red-800 text-sm">Client Requested to Tailor Proposal</h4>
+                        <p className="text-sm text-red-600 mb-2">{quotation.amendment_request}</p>
+                        <p className="text-xs text-red-500">Original Total: Rs {quotation.total?.toLocaleString('en-US', { maximumFractionDigits: 0 })}</p>
                       </div>
                     </div>
-                  )}
+                    <div className="flex gap-2 w-full md:w-auto">
+                      <button onClick={() => {
+                          const newTotalStr = prompt("Enter the NEW total amount (Rs):", quotation.total);
+                          if (!newTotalStr) return;
+                          const newTotal = parseFloat(newTotalStr);
+                          if (isNaN(newTotal)) return alert("Invalid number");
+                          handleProcessCounterOffer(quotation.id, 'accept', newTotal);
+                        }}
+                        disabled={processingOfferId === quotation.id}
+                        className="flex-1 md:flex-none bg-green-600 text-white px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-green-700 transition disabled:opacity-50"
+                      >
+                        Accept & Update Price
+                      </button>
+                      <button onClick={() => handleProcessCounterOffer(quotation.id, 'decline')} disabled={processingOfferId === quotation.id} className="flex-1 md:flex-none bg-gray-600 text-white px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-gray-700 transition disabled:opacity-50">Decline</button>
+                    </div>
+                  </div>
+                )}
 
-                  <div className="bg-[#FAF7F0] px-6 py-4 border-b border-[#E5DFD3] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-3 mb-1">
-                        <span className="bg-[#1B4D3E] text-white text-xs px-2 py-1 rounded-sm tracking-wider">{booking.booking_ref}</span>
-                        <span className="text-xs tracking-widest uppercase text-[#3D8B8B] font-medium">Confirmed Booking</span>
-                        <button onClick={() => handleSendInvite(booking)} className="text-xs bg-[#C9A961] text-[#1B4D3E] px-3 py-1 uppercase tracking-wider hover:bg-white border border-[#C9A961] transition flex items-center gap-1"><Send size={12} /> Send Portal Invite</button>
-                      </div>
-                      <h3 className="font-serif text-2xl text-[#1B4D3E]">{booking.customer_name}</h3>
-                      <div className="flex flex-col md:flex-row md:items-center gap-2 mt-1"><p className="text-sm text-gray-600">Travel Date: {booking.travel_start}</p></div>
+                <div className="bg-[#FAF7F0] px-6 py-4 border-b border-[#E5DFD3] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-3 mb-1">
+                      <span className="bg-[#1B4D3E] text-white text-xs px-2 py-1 rounded-sm tracking-wider">{booking.booking_ref}</span>
+                      <span className="text-xs tracking-widest uppercase text-[#3D8B8B] font-medium">Confirmed Booking</span>
+                      <button onClick={() => handleSendInvite(booking)} className="text-xs bg-[#C9A961] text-[#1B4D3E] px-3 py-1 uppercase tracking-wider hover:bg-white border border-[#C9A961] transition flex items-center gap-1"><Send size={12} /> Send Portal Invite</button>
+                    </div>
+                    <h3 className="font-serif text-2xl text-[#1B4D3E]">{booking.customer_name}</h3>
+                    <div className="flex flex-col md:flex-row md:items-center gap-2 mt-1"><p className="text-sm text-gray-600">Travel Date: {booking.travel_start}</p></div>
 
-                      <div className="mt-3 space-y-2">
-                        {enquiry?.arrival_flight && (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs font-medium text-[#1B4D3E] bg-white border border-[#E5DFD3] px-2 py-1 flex items-center gap-1"><Navigation size={12} className="text-[#C9A961]" /> Arrival: {enquiry.arrival_flight}</span>
-                            <button onClick={() => handleTrackFlight(booking.booking_ref, enquiry.arrival_flight)} disabled={trackingBookingRef === booking.booking_ref} className="text-xs bg-[#C9A961] text-[#1B4D3E] px-3 py-1 uppercase tracking-wider hover:bg-white border border-[#C9A961] transition disabled:opacity-50 flex items-center gap-1"><RefreshCw size={12} className={trackingBookingRef === booking.booking_ref ? 'animate-spin' : ''} /> {trackingBookingRef === booking.booking_ref ? 'Tracking...' : 'Track Flight'}</button>
-                            {enquiry?.flight_status && <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 border border-blue-200">Status: {enquiry.flight_status} {enquiry.estimated_arrival && ` | ETA: ${new Date(enquiry.estimated_arrival).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}</span>}
-                          </div>
-                        )}
+                    <div className="mt-3 space-y-2">
+                      {enquiry?.arrival_flight && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-medium text-[#1B4D3E] bg-white border border-[#E5DFD3] px-2 py-1 flex items-center gap-1"><Navigation size={12} className="text-[#C9A961]" /> Arrival: {enquiry.arrival_flight}</span>
+                          <button onClick={() => handleTrackFlight(booking.booking_ref, enquiry.arrival_flight)} disabled={trackingBookingRef === booking.booking_ref} className="text-xs bg-[#C9A961] text-[#1B4D3E] px-3 py-1 uppercase tracking-wider hover:bg-white border border-[#C9A961] transition disabled:opacity-50 flex items-center gap-1"><RefreshCw size={12} className={trackingBookingRef === booking.booking_ref ? 'animate-spin' : ''} /> {trackingBookingRef === booking.booking_ref ? 'Tracking...' : 'Track Flight'}</button>
+                          {enquiry?.flight_status && <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 border border-blue-200">Status: {enquiry.flight_status} {enquiry.estimated_arrival && ` | ETA: ${new Date(enquiry.estimated_arrival).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}</span>}
+                        </div>
+                      )}
 
-                        {enquiry?.departure_flight && (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs font-medium text-[#1B4D3E] bg-white border border-[#E5DFD3] px-2 py-1 flex items-center gap-1"><PlaneTakeoff size={12} className="text-[#C9A961]" /> Departure: {enquiry.departure_flight}</span>
-                            {!enquiry.calculated_pickup_time ? (
-                              <button onClick={() => handleCalculateDeparture(booking.booking_ref, enquiry.departure_flight)} disabled={calculatingDeparture === booking.booking_ref} className="text-xs bg-[#1B4D3E] text-white px-3 py-1 uppercase tracking-wider hover:bg-[#C9A961] hover:text-[#1B4D3E] transition disabled:opacity-50 flex items-center gap-1 border border-[#1B4D3E]"><Clock size={12} className={calculatingDeparture === booking.booking_ref ? 'animate-spin' : ''} /> {calculatingDeparture === booking.booking_ref ? 'Calculating...' : 'Calculate Pickup'}</button>
-                            ) : (
-                              <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-1 border border-green-200">Pickup at Hotel: {enquiry.calculated_pickup_time}</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {booking.intake_submitted && (
-                        <div className="mt-5 bg-white border border-[#E5DFD3] p-4 rounded-sm shadow-sm">
-                          <div className="font-bold text-[#1B4D3E] mb-3 uppercase tracking-widest text-[10px] flex items-center gap-2"><UserCheck size={14} className="text-[#C9A961]" /> Pre-Arrival Profile</div>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-6 text-sm text-[#4A4A4A]">
-                            <div><span className="text-gray-400 text-xs block uppercase tracking-wider mb-0.5">Arrival Flight</span> <strong className="text-[#1B4D3E]">{booking.intake_flight || 'N/A'}</strong></div>
-                            <div><span className="text-gray-400 text-xs block uppercase tracking-wider mb-0.5">Dietary Needs</span> <strong className="text-[#1B4D3E]">{booking.dietary_needs || 'None'}</strong></div>
-                            <div><span className="text-gray-400 text-xs block uppercase tracking-wider mb-0.5">Occasion</span> <strong className="text-[#1B4D3E]">{booking.special_occasion || 'None'}</strong></div>
-                            <div><span className="text-gray-400 text-xs block uppercase tracking-wider mb-0.5">Car Seats</span> <strong className="text-[#1B4D3E]">{booking.car_seats || 'None'}</strong></div>
-                            <div className="col-span-2"><span className="text-gray-400 text-xs block uppercase tracking-wider mb-0.5">Preferred Pace</span> <strong className="text-[#1B4D3E]">{booking.pace_preference || 'N/A'}</strong></div>
-                          </div>
+                      {enquiry?.departure_flight && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-medium text-[#1B4D3E] bg-white border border-[#E5DFD3] px-2 py-1 flex items-center gap-1"><PlaneTakeoff size={12} className="text-[#C9A961]" /> Departure: {enquiry.departure_flight}</span>
+                          {!enquiry.calculated_pickup_time ? (
+                            <button onClick={() => handleCalculateDeparture(booking.booking_ref, enquiry.departure_flight)} disabled={calculatingDeparture === booking.booking_ref} className="text-xs bg-[#1B4D3E] text-white px-3 py-1 uppercase tracking-wider hover:bg-[#C9A961] hover:text-[#1B4D3E] transition disabled:opacity-50 flex items-center gap-1 border border-[#1B4D3E]"><Clock size={12} className={calculatingDeparture === booking.booking_ref ? 'animate-spin' : ''} /> {calculatingDeparture === booking.booking_ref ? 'Calculating...' : 'Calculate Pickup'}</button>
+                          ) : (
+                            <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-1 border border-green-200">Pickup at Hotel: {enquiry.calculated_pickup_time}</span>
+                          )}
                         </div>
                       )}
                     </div>
-                    <div className="text-right mt-4 md:mt-0">
-                      <div className="text-xs tracking-widest uppercase text-gray-500 mb-1">Gross Profit (Est.)</div>
-                      <div className="text-xl font-serif text-green-700">Rs {grossProfit.toLocaleString()}</div>
-                    </div>
-                  </div>
 
-                  <div className="p-6">
-                    <h4 className="text-xs tracking-widest uppercase text-[#1B4D3E] mb-4 font-medium flex items-center gap-2"><FileText size={16} /> Supplier Services to Book</h4>
-                    {items.length === 0 ? (
-                      <p className="text-sm text-red-500">No services found.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {items.map((item: any) => {
-                          const savedBooking = supplierBookings.find((sb: any) => sb.service_description === item.description)
-                          const isBooked = !!savedBooking
-                          const isProcessing = processingItemId === item.id
-                          if (!item.description) return null;
-                          return (
-                            <div key={item.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-[#E5DFD3] rounded-sm hover:bg-[#FAF7F0] transition gap-4">
-                              <div>
-                                <div className="font-medium text-[#1B4D3E]">{item.description}</div>
-                                <div className="text-xs text-gray-500">Pax: {item.pax} | Net Cost: Rs {item.supplier_cost.toLocaleString()}</div>
-                              </div>
-                              <div className="flex flex-col md:items-end gap-2">
-                                {isBooked ? (
-                                  <>
-                                    <span className="flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full"><CheckCircle size={14} /> Booked (Ref: {savedBooking.confirmation_number})</span>
-                                    <div className="text-[10px] text-gray-500 uppercase tracking-wider text-right">Driver: {savedBooking.driver_name || 'N/A'} · Plate: {savedBooking.vehicle_plate || 'N/A'}</div>
-                                    <div className={`text-[10px] font-bold uppercase tracking-wider mt-1 px-2 py-1 rounded-sm ${savedBooking.job_status === 'Completed' ? 'text-green-700 bg-green-100' : savedBooking.job_status === 'Picked Up' ? 'text-blue-700 bg-blue-100' : savedBooking.job_status === 'En Route' ? 'text-orange-700 bg-orange-100' : 'text-gray-500 bg-gray-100'}`}>Status: {savedBooking.job_status || 'Pending'}</div>
-                                  </>
-                                ) : (
-                                  <div className="flex items-center gap-3">
-                                    <span className="flex items-center gap-1 text-xs font-medium text-orange-600 bg-orange-100 px-3 py-1 rounded-full"><Clock size={14} /> Pending</span>
-                                    <button onClick={() => handleBookSupplier(booking, item)} disabled={isProcessing} className={`text-sm font-medium underline underline-offset-4 transition ${isProcessing ? 'text-gray-400 cursor-not-allowed' : 'text-[#3D8B8B] hover:text-[#1B4D3E]'}`}>{isProcessing ? 'Processing...' : 'Mark as Booked'}</button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        })}
+                    {booking.intake_submitted && (
+                      <div className="mt-5 bg-white border border-[#E5DFD3] p-4 rounded-sm shadow-sm">
+                        <div className="font-bold text-[#1B4D3E] mb-3 uppercase tracking-widest text-[10px] flex items-center gap-2"><UserCheck size={14} className="text-[#C9A961]" /> Pre-Arrival Profile</div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-6 text-sm text-[#4A4A4A]">
+                          <div><span className="text-gray-400 text-xs block uppercase tracking-wider mb-0.5">Arrival Flight</span> <strong className="text-[#1B4D3E]">{booking.intake_flight || 'N/A'}</strong></div>
+                          <div><span className="text-gray-400 text-xs block uppercase tracking-wider mb-0.5">Dietary Needs</span> <strong className="text-[#1B4D3E]">{booking.dietary_needs || 'None'}</strong></div>
+                          <div><span className="text-gray-400 text-xs block uppercase tracking-wider mb-0.5">Occasion</span> <strong className="text-[#1B4D3E]">{booking.special_occasion || 'None'}</strong></div>
+                          <div><span className="text-gray-400 text-xs block uppercase tracking-wider mb-0.5">Car Seats</span> <strong className="text-[#1B4D3E]">{booking.car_seats || 'None'}</strong></div>
+                          <div className="col-span-2"><span className="text-gray-400 text-xs block uppercase tracking-wider mb-0.5">Preferred Pace</span> <strong className="text-[#1B4D3E]">{booking.pace_preference || 'N/A'}</strong></div>
+                        </div>
                       </div>
                     )}
                   </div>
+                  <div className="text-right mt-4 md:mt-0">
+                    <div className="text-xs tracking-widest uppercase text-gray-500 mb-1">Gross Profit (Est.)</div>
+                    <div className="text-xl font-serif text-green-700">Rs {grossProfit.toLocaleString()}</div>
+                  </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
-      </main>
+
+                <div className="p-6">
+                  <h4 className="text-xs tracking-widest uppercase text-[#1B4D3E] mb-4 font-medium flex items-center gap-2"><FileText size={16} /> Supplier Services to Book</h4>
+                  {items.length === 0 ? (
+                    <p className="text-sm text-red-500">No services found.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {items.map((item: any) => {
+                        const savedBooking = supplierBookings.find((sb: any) => sb.service_description === item.description)
+                        const isBooked = !!savedBooking
+                        const isProcessing = processingItemId === item.id
+                        if (!item.description) return null;
+                        return (
+                          <div key={item.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-[#E5DFD3] rounded-sm hover:bg-[#FAF7F0] transition gap-4">
+                            <div>
+                              <div className="font-medium text-[#1B4D3E]">{item.description}</div>
+                              <div className="text-xs text-gray-500">Pax: {item.pax} | Net Cost: Rs {item.supplier_cost.toLocaleString()}</div>
+                            </div>
+                            <div className="flex flex-col md:items-end gap-2">
+                              {isBooked ? (
+                                <>
+                                  <span className="flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full"><CheckCircle size={14} /> Booked (Ref: {savedBooking.confirmation_number})</span>
+                                  <div className="text-[10px] text-gray-500 uppercase tracking-wider text-right">Driver: {savedBooking.driver_name || 'N/A'} · Plate: {savedBooking.vehicle_plate || 'N/A'}</div>
+                                </>
+                              ) : (
+                                <div className="flex items-center gap-3">
+                                  <span className="flex items-center gap-1 text-xs font-medium text-orange-600 bg-orange-100 px-3 py-1 rounded-full"><Clock size={14} /> Pending</span>
+                                  <button onClick={() => handleBookSupplier(booking, item)} disabled={isProcessing} className={`text-sm font-medium underline underline-offset-4 transition ${isProcessing ? 'text-gray-400 cursor-not-allowed' : 'text-[#3D8B8B] hover:text-[#1B4D3E]'}`}>{isProcessing ? 'Processing...' : 'Mark as Booked'}</button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

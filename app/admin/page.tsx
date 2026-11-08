@@ -4,70 +4,42 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../utils/supabase'
-import { Search, Hotel, Bell, AlertCircle } from 'lucide-react'
+import { Mail, Headset, Wallet, AlertCircle, CheckCircle } from 'lucide-react'
 
 export default function AdminDashboard() {
   const router = useRouter()
+  
   const [enquiries, setEnquiries] = useState<any[]>([])
   const [allBookings, setAllBookings] = useState<any[]>([])
   const [pendingBookings, setPendingBookings] = useState<any[]>([])
   const [conciergeRequests, setConciergeRequests] = useState<any[]>([])
   const [disruptions, setDisruptions] = useState<any[]>([])
-  const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
+  const [greeting, setGreeting] = useState('Welcome')
 
   useEffect(() => {
-    async function initDashboard() {
-      // 1. Secure Auth Check
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        router.push('/admin/login')
-        return
-      }
+    const hour = new Date().getHours()
+    if (hour < 12) setGreeting('Good morning')
+    else if (hour < 18) setGreeting('Good afternoon')
+    else setGreeting('Good evening')
 
-      // 2. Fetch New Enquiries
-      const { data: enqData } = await supabase
-        .from('enquiries')
-        .select(`*, customers (full_name, email, phone), quotations!left(id)`)
-        .is('quotations', null)
-        .order('created_at', { ascending: false })
-      
+    async function initDashboard() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { router.push('/admin/login'); return }
+
+      const { data: enqData } = await supabase.from('enquiries').select(`*, customers (full_name, email, phone), quotations!left(id)`).is('quotations', null).order('created_at', { ascending: false })
       if (enqData) setEnquiries(enqData)
 
-      // 3. Fetch ALL Bookings
-      const { data: bookData } = await supabase
-        .from('bookings')
-        .select(`*, quotations ( enquiries ( customers ( full_name, email ) ) )`)
-        .order('created_at', { ascending: false })
-      
+      const { data: bookData } = await supabase.from('bookings').select(`*, quotations ( enquiries ( customers ( full_name, email ) ) )`).order('created_at', { ascending: false })
       if (bookData) setAllBookings(bookData)
 
-      // 4. Fetch Pending Payments
-      const { data: pendingData } = await supabase
-        .from('bookings')
-        .select(`*, payments ( id, amount )`)
-        .eq('payment_status', 'Pending')
-      
+      const { data: pendingData } = await supabase.from('bookings').select(`*, payments ( id, amount )`).eq('payment_status', 'Pending')
       if (pendingData) setPendingBookings(pendingData)
 
-      // 5. Fetch Concierge Requests
-      const { data: conciergeData } = await supabase
-        .from('concierge_requests')
-        .select('*')
-        .eq('status', 'Pending')
-        .order('created_at', { ascending: false })
-      
+      const { data: conciergeData } = await supabase.from('concierge_requests').select('*').eq('status', 'Pending').order('created_at', { ascending: false })
       if (conciergeData) setConciergeRequests(conciergeData)
 
-      // 6. Fetch Live Disruptions (Phase 2 Engine)
-      const { data: disruptionData } = await supabase
-        .from('supplier_bookings')
-        .select(`
-          id, service_description, driver_name, original_pickup_time, pickup_time, delay_minutes, disruption_status,
-          quotations ( bookings ( customer_name ) )
-        `)
-        .in('disruption_status', ['Notified', 'Acknowledged'])
-      
+      const { data: disruptionData } = await supabase.from('supplier_bookings').select(`id, service_description, driver_name, original_pickup_time, pickup_time, delay_minutes, disruption_status, quotations ( bookings ( customer_name ) )`).in('disruption_status', ['Notified', 'Acknowledged'])
       if (disruptionData) setDisruptions(disruptionData)
       
       setLoading(false)
@@ -75,286 +47,109 @@ export default function AdminDashboard() {
     initDashboard()
   }, [router])
 
-  async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.push('/admin/login')
-  }
-
-  async function handleConfirmPayment(bookingId: string, paymentId: string) {
-    if (!confirm("Have you verified this deposit in your bank account?")) return
-    const res = await fetch('/api/confirm-payment', {
-      method: 'POST',
-      body: JSON.stringify({ bookingId, paymentId })
-    })
-    if (res.ok) {
-      alert("Payment Confirmed!")
-      window.location.reload() 
-    }
-  }
-
-  async function handleResolveConcierge(requestId: string) {
-    await supabase.from('concierge_requests').update({ status: 'Resolved' }).eq('id', requestId)
-    window.location.reload()
-  }
-
-  // Filter enquiries based on search
-  const filteredEnquiries = enquiries.filter(enq => 
-    enq.customers?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    enq.customers?.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
-  // Filter bookings based on search
-  const filteredBookings = allBookings.filter(book => 
-    book.booking_ref.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    book.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    book.quotations?.enquiries?.customers?.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const totalAlerts = disruptions.length + pendingBookings.length + conciergeRequests.length
 
   return (
-    <div className="min-h-screen bg-[#F5F0E6] flex flex-col md:flex-row font-sans text-[#1A1A1A]">
-      
-      <aside className="w-full md:w-64 bg-[#1B4D3E] text-white p-6 flex flex-col print:hidden">
-        <div className="mb-12">
-          <div className="text-xs tracking-[0.3em] uppercase text-[#C9A961] mb-1">Admin</div>
-          <div className="font-serif text-xl">Peace and Afrova</div>
-        </div>
-        <nav className="space-y-4 flex-1 text-sm font-light tracking-wide">
-          <Link href="/admin" className="block text-[#C9A961]">Dashboard</Link>
-          <Link href="/admin/bookings" className="block opacity-70 hover:opacity-100 transition">Operations & Bookings</Link>
-          <Link href="/admin/dispatch" className="block opacity-70 hover:opacity-100 transition">Dispatch Board</Link>
-          <Link href="/admin/suppliers" className="block opacity-70 hover:opacity-100 transition">Supplier Scorecard</Link>
-          <Link href="/admin/finance" className="block opacity-70 hover:opacity-100 transition">Finance</Link>
-          <Link href="/admin/reviews" className="block opacity-70 hover:opacity-100 transition">Manage Reviews</Link>
-          <Link href="/admin/rates" className="block opacity-70 hover:opacity-100 transition">Rate Catalog</Link>
-        </nav>
-        <button onClick={handleSignOut} className="mt-8 text-xs tracking-widest uppercase opacity-70 hover:opacity-100 hover:text-red-300 text-left transition">
-          Sign Out
-        </button>
-      </aside>
+    <div className="max-w-6xl mx-auto space-y-8">
+      {/* GREETING */}
+      <div>
+        <h1 className="font-serif text-4xl text-[#1B4D3E]">{greeting}.</h1>
+        <p className="text-gray-500 mt-1">Here is your business overview.</p>
+      </div>
 
-      <main className="flex-1 p-6 md:p-12 overflow-auto">
-        
-        {/* --- LIVE DISRUPTION ENGINE ALERTS --- */}
-        {disruptions.length > 0 && (
-          <div className="mb-8 space-y-4 animate-in fade-in slide-in-from-top-4">
-            <h2 className="font-serif text-2xl text-red-700 flex items-center gap-2">
-              <AlertCircle className="text-red-600" /> Live Operational Disruptions
-            </h2>
-            {disruptions.map(dis => {
-              const quotation = Array.isArray(dis.quotations) ? dis.quotations[0] : dis.quotations;
-              const booking = Array.isArray(quotation?.bookings) ? quotation.bookings[0] : quotation?.bookings;
-              
-              return (
-                <div key={dis.id} className="bg-red-50 border-l-4 border-red-600 p-4 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 uppercase tracking-wider font-bold">Flight Delayed {dis.delay_minutes}m</span>
-                      <span className="text-xs font-medium text-gray-600">{booking?.customer_name}</span>
-                    </div>
-                    <p className="text-sm font-medium text-[#1B4D3E]">
-                      Driver <strong>{dis.driver_name}</strong> notified. Original Pickup: <span className="line-through text-gray-400">{dis.original_pickup_time}</span> → New: <strong>{dis.pickup_time}</strong>
-                    </p>
-                    <p className="text-xs text-red-600 font-bold mt-1">
-                      Status: {dis.disruption_status === 'Notified' ? 'Awaiting Driver Acknowledgement' : 'Driver Acknowledged - En Route'}
-                    </p>
+      {/* KPI CARDS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white p-6 rounded-lg border border-[#E5DFD3] shadow-sm">
+          <div className="text-4xl font-serif text-[#1B4D3E] mb-1">{allBookings.length}</div>
+          <div className="text-xs text-gray-500 uppercase tracking-widest font-bold">Bookings</div>
+        </div>
+        <div className="bg-white p-6 rounded-lg border border-[#E5DFD3] shadow-sm">
+          <div className="text-4xl font-serif text-[#1B4D3E] mb-1">{enquiries.length}</div>
+          <div className="text-xs text-gray-500 uppercase tracking-widest font-bold">Enquiries</div>
+        </div>
+        <div className="bg-white p-6 rounded-lg border border-[#E5DFD3] shadow-sm">
+          <div className="text-4xl font-serif text-[#C9A961] mb-1">{pendingBookings.length}</div>
+          <div className="text-xs text-gray-500 uppercase tracking-widest font-bold">Payments</div>
+        </div>
+        <div className="bg-white p-6 rounded-lg border border-[#E5DFD3] shadow-sm">
+          <div className="text-4xl font-serif text-[#1B4D3E] mb-1">{conciergeRequests.length + disruptions.length}</div>
+          <div className="text-xs text-gray-500 uppercase tracking-widest font-bold">Requests</div>
+        </div>
+      </div>
+
+      {/* ATTENTION REQUIRED */}
+      <div className="bg-white rounded-lg border border-[#E5DFD3] shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-[#E5DFD3] bg-[#FAF7F0]">
+          <h2 className="font-bold text-[#1B4D3E]">Attention required</h2>
+        </div>
+        <div className="p-4 space-y-3">
+          {disruptions.length > 0 && (
+            <Link href="/admin/dispatch" className="flex items-center justify-between p-3 bg-red-50 border border-red-100 rounded-md hover:bg-red-100 transition">
+              <div className="flex items-center gap-3">
+                <AlertCircle size={18} className="text-red-600" />
+                <span className="text-sm font-medium text-red-800">Operational alert: {disruptions.length} flight disruption(s)</span>
+              </div>
+              <span className="text-xs font-bold text-red-600 uppercase">Review</span>
+            </Link>
+          )}
+          {pendingBookings.length > 0 && (
+            <Link href="/admin" className="flex items-center justify-between p-3 bg-orange-50 border border-orange-100 rounded-md hover:bg-orange-100 transition">
+              <div className="flex items-center gap-3">
+                <Wallet size={18} className="text-orange-600" />
+                <span className="text-sm font-medium text-orange-800">Payment review: {pendingBookings.length} deposit(s) to confirm</span>
+              </div>
+              <span className="text-xs font-bold text-orange-600 uppercase">Review</span>
+            </Link>
+          )}
+          {conciergeRequests.length > 0 && (
+            <Link href="/admin" className="flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-md hover:bg-blue-100 transition">
+              <div className="flex items-center gap-3">
+                <Headset size={18} className="text-blue-600" />
+                <span className="text-sm font-medium text-blue-800">Concierge: {conciergeRequests.length} new request(s)</span>
+              </div>
+              <span className="text-xs font-bold text-blue-600 uppercase">Review</span>
+            </Link>
+          )}
+          {totalAlerts === 0 && (
+            <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-100 rounded-md">
+              <CheckCircle size={18} className="text-green-600" />
+              <span className="text-sm font-medium text-green-800">All caught up. No urgent tasks.</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* RECENT ACTIVITY */}
+      <div className="bg-white rounded-lg border border-[#E5DFD3] shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-[#E5DFD3] bg-[#FAF7F0] flex justify-between items-center">
+          <h2 className="font-bold text-[#1B4D3E]">Recent activity</h2>
+          <Link href="/admin/bookings" className="text-xs text-[#3D8B8B] hover:text-[#1B4D3E] font-medium underline">View All</Link>
+        </div>
+        <div className="divide-y divide-[#E5DFD3]">
+          {loading ? (
+            <div className="p-6 text-center text-gray-500 text-sm">Loading activity...</div>
+          ) : enquiries.length === 0 ? (
+            <div className="p-6 text-center text-gray-500 text-sm">No recent activity.</div>
+          ) : (
+            enquiries.slice(0, 5).map((enq) => (
+              <div key={enq.id} className="p-4 flex items-center justify-between hover:bg-[#FAF7F0] transition">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#FAF7F0] border border-[#E5DFD3] flex items-center justify-center">
+                    <Mail size={14} className="text-[#C9A961]" />
                   </div>
-                  {dis.disruption_status === 'Notified' && (
-                    <div className="text-xs text-red-500 italic bg-white p-2 border border-red-200">
-                      Escalation rule: Call driver if unacknowledged in 15 mins.
-                    </div>
-                  )}
+                  <div>
+                    <div className="text-sm font-medium text-[#1B4D3E]">Guest enquiry received</div>
+                    <div className="text-xs text-gray-500">{enq.customers?.full_name} · {new Date(enq.created_at).toLocaleDateString()}</div>
+                  </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Global Search Bar */}
-        <div className="mb-8 flex justify-between items-center bg-white p-4 border border-[#E5DFD3] shadow-sm">
-          <div className="flex items-center gap-2 w-full max-w-md">
-            <Search className="text-gray-400" size={20} />
-            <input 
-              type="text" 
-              placeholder="Search by client name, email, or booking ref..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-transparent border-none focus:outline-none text-sm"
-            />
-          </div>
+                <Link href={`/admin/quote?id=${enq.id}`} className="text-xs font-bold text-[#3D8B8B] uppercase tracking-widest hover:text-[#1B4D3E]">
+                  Quote
+                </Link>
+              </div>
+            ))
+          )}
         </div>
-
-        {/* If searching, show Search Results */}
-        {searchTerm ? (
-          <div className="mb-12">
-            <h2 className="font-serif text-3xl text-[#1B4D3E] mb-6">Search Results</h2>
-            
-            {filteredEnquiries.length > 0 && (
-              <div className="mb-8">
-                <h3 className="text-xs tracking-widest uppercase text-gray-500 mb-4">New Enquiries</h3>
-                <div className="bg-white shadow-sm border border-[#E5DFD3] p-4 space-y-2">
-                  {filteredEnquiries.map(enq => (
-                    <div key={enq.id} className="flex justify-between items-center p-2 border-b border-gray-100 last:border-0">
-                      <div>
-                        <div className="font-medium text-[#1B4D3E]">{enq.customers?.full_name}</div>
-                        <div className="text-xs text-gray-500">{enq.customers?.email} | Travel: {enq.travel_start}</div>
-                        {enq.product_interest && (
-                          <div className="mt-1 inline-block bg-[#FAF7F0] text-[#C9A961] border border-[#E5DFD3] text-[10px] px-2 py-0.5 uppercase tracking-wider">
-                            Interested: {enq.product_interest}
-                          </div>
-                        )}
-                      </div>
-                      <Link href={`/admin/quote?id=${enq.id}`} className="text-xs bg-[#1B4D3E] text-white px-3 py-1 uppercase tracking-widest">Quote</Link>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {filteredBookings.length > 0 && (
-              <div>
-                <h3 className="text-xs tracking-widest uppercase text-gray-500 mb-4">Confirmed Bookings</h3>
-                <div className="bg-white shadow-sm border border-[#E5DFD3] p-4 space-y-2">
-                  {filteredBookings.map(book => (
-                    <div key={book.id} className="flex justify-between items-center p-2 border-b border-gray-100 last:border-0">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="bg-[#FAF7F0] text-[#3D8B8B] text-[10px] px-2 py-0.5 border border-[#E5DFD3] uppercase tracking-wider">{book.booking_ref}</span>
-                          <span className="font-medium text-[#1B4D3E]">{book.customer_name}</span>
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">Travel: {book.travel_start} | Payment: {book.payment_status}</div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Link href={`/admin/bookings`} className="text-xs border border-[#1B4D3E] text-[#1B4D3E] px-3 py-1 uppercase tracking-widest hover:bg-[#FAF7F0]">Operations</Link>
-                        <Link href={`/portal/itinerary?ref=${book.booking_ref}`} target="_blank" className="text-xs bg-[#C9A961] text-[#1B4D3E] px-3 py-1 uppercase tracking-widest">Itinerary</Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {filteredEnquiries.length === 0 && filteredBookings.length === 0 && (
-              <div className="bg-white p-8 text-center text-[#4A4A4A] shadow-sm border border-[#E5DFD3]">
-                No results found for "{searchTerm}".
-              </div>
-            )}
-          </div>
-        ) : (
-          <>
-            {/* CONCIERGE REQUESTS */}
-            {conciergeRequests.length > 0 && (
-              <div className="mb-12">
-                <h2 className="font-serif text-3xl text-[#1B4D3E] mb-6 flex items-center gap-2">
-                  <Bell className="text-[#C9A961]" /> Active Concierge Requests
-                </h2>
-                <div className="grid gap-4">
-                  {conciergeRequests.map((req) => (
-                    <div key={req.id} className="bg-white p-6 shadow-sm border-l-4 border-blue-500 flex flex-col md:flex-row justify-between items-center gap-4">
-                      <div>
-                        <div className="text-xs tracking-widest uppercase text-gray-500 mb-1">{req.booking_ref} · {req.request_type}</div>
-                        <div className="font-medium text-[#1B4D3E]">{req.customer_name}</div>
-                        <p className="text-sm text-gray-600 mt-2 italic bg-[#FAF7F0] p-2 border border-[#E5DFD3]">"{req.request_details}"</p>
-                      </div>
-                      <button 
-                        onClick={() => handleResolveConcierge(req.id)} 
-                        className="bg-[#1B4D3E] text-white px-6 py-3 text-xs uppercase tracking-widest hover:bg-green-600 transition whitespace-nowrap"
-                      >
-                        Mark Resolved
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* DEPOSITS TO CONFIRM */}
-            {pendingBookings.length > 0 && (
-              <div className="mb-12">
-                <h2 className="font-serif text-3xl text-[#1B4D3E] mb-6">Deposits to Confirm</h2>
-                <div className="grid gap-4">
-                  {pendingBookings.map((booking) => {
-                    const paymentId = booking.payments?.[0]?.id || 'test-id'
-                    const depositAmount = booking.payments?.[0]?.amount || (booking.total_amount * 0.5)
-                    const curr = booking.currency || 'MUR'
-                    const displayAmount = curr === 'USD' ? `$${(depositAmount / 45).toFixed(0)}` : curr === 'EUR' ? `€${(depositAmount / 49).toFixed(0)}` : `Rs ${depositAmount.toLocaleString()}`;
-
-                    return (
-                      <div key={booking.id} className="bg-white p-6 shadow-sm border-l-4 border-[#C9A961] flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div>
-                          <div className="text-xs tracking-widest uppercase text-gray-500 mb-1">{booking.booking_ref}</div>
-                          <div className="font-medium text-[#1B4D3E]">{booking.customer_name}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs tracking-widest uppercase text-gray-500 mb-1">Deposit Due</div>
-                          <div className="text-xl font-serif text-[#1B4D3E]">{displayAmount}</div>
-                        </div>
-                        <button onClick={() => handleConfirmPayment(booking.id, paymentId)} className="bg-[#1B4D3E] text-white px-6 py-3 text-xs uppercase tracking-widest hover:bg-[#C9A961] hover:text-[#1B4D3E] transition">
-                          Confirm Deposit
-                        </button>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            <h1 className="font-serif text-4xl text-[#1B4D3E] mb-8">Recent Enquiries</h1>
-            {loading ? (
-              <p className="text-[#4A4A4A]">Loading database...</p>
-            ) : enquiries.length === 0 ? (
-              <div className="bg-white p-8 text-center text-[#4A4A4A] shadow-sm border border-[#E5DFD3]">
-                <p className="mb-4">No new enquiries. (Quoted enquiries have moved to Operations).</p>
-                <Link href="/bespoke" target="_blank" className="text-[#1B4D3E] font-medium underline">Open the Enquiry Form</Link>
-              </div>
-            ) : (
-              <div className="bg-white shadow-sm overflow-x-auto border border-[#E5DFD3]">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#E5DFD3] text-xs tracking-widest uppercase text-[#3D8B8B] bg-[#FAF7F0]">
-                      <th className="p-4 font-medium">Date</th>
-                      <th className="p-4 font-medium">Client</th>
-                      <th className="p-4 font-medium">Travel Date</th>
-                      <th className="p-4 font-medium">Hotel</th>
-                      <th className="p-4 font-medium text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm text-[#4A4A4A] font-light">
-                    {enquiries.map((enq) => (
-                      <tr key={enq.id} className="border-b border-[#E5DFD3] hover:bg-[#FAF7F0] transition">
-                        <td className="p-4 whitespace-nowrap">{new Date(enq.created_at).toLocaleDateString()}</td>
-                        <td className="p-4">
-                          <div className="font-medium text-[#1B4D3E]">{enq.customers?.full_name || 'Unknown'}</div>
-                          <div className="text-xs">{enq.customers?.email}</div>
-                          {enq.product_interest && (
-                            <div className="mt-1 inline-block bg-[#FAF7F0] text-[#C9A961] border border-[#E5DFD3] text-[10px] px-2 py-0.5 uppercase tracking-wider">
-                              Interested: {enq.product_interest}
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-4 whitespace-nowrap">{enq.travel_start}</td>
-                        <td className="p-4">
-                          {enq.has_hotel === 'no' ? (
-                            <span className="flex items-center gap-1 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                              <Hotel size={12} /> Needs Hotel
-                            </span>
-                          ) : (
-                            <span className="text-xs text-gray-500">Booked</span>
-                          )}
-                        </td>
-                        <td className="p-4 text-right">
-                          <Link href={`/admin/quote?id=${enq.id}`} className="inline-block bg-[#1B4D3E] text-white px-4 py-2 text-xs uppercase tracking-widest hover:bg-[#C9A961] transition">
-                            Create Quote
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
-        )}
-      </main>
+      </div>
     </div>
   )
 }
