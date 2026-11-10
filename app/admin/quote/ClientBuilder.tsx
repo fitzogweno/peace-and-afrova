@@ -26,22 +26,22 @@ function BuilderContent() {
   const [discountPercent, setDiscountPercent] = useState<number>(0)
   const [quoteCurrency, setQuoteCurrency] = useState('MUR')
   
-  // NEW: Policy Selector State
   const [policyType, setPolicyType] = useState<'standard' | 'aviation'>('standard')
 
+  // Default to an empty line if nothing is loaded
   const [items, setItems] = useState([{ id: 1, desc: '', pax: 1, cost: 0, sell: 0 }])
 
   useEffect(() => {
     async function initPage() {
-      // 1. Secure Auth Check
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
         router.push('/admin/login')
         return
       }
 
-      // 2. Fetch Data
       if (!enquiryId) return
+      
+      // 1. Fetch Client Data
       const { data: clientData } = await supabase
         .from('enquiries')
         .select(`travel_start, party_size, interests, has_hotel, hotel_details, hotel_budget, hotel_location, hotel_vibe, customers (full_name, email)`)
@@ -57,8 +57,31 @@ function BuilderContent() {
         setTravelDate(clientData.travel_start)
       }
 
+      // 2. Fetch Services Catalog
       const { data: serviceData } = await supabase.from('services').select('*').order('category', { ascending: true })
       if (serviceData) setCatalog(serviceData)
+
+      // 🧠 3. CHECK FOR EXISTING DRAFT QUOTE
+      const { data: draftData } = await supabase
+        .from('quotations')
+        .select(`id, booking_ref, quote_status, quotation_items (*)`)
+        .eq('enquiry_id', enquiryId)
+        .eq('quote_status', 'Draft')
+        .maybeSingle()
+
+      if (draftData) {
+        setSavedRef(draftData.booking_ref)
+        if (draftData.quotation_items && draftData.quotation_items.length > 0) {
+          const mappedItems = draftData.quotation_items.map((item: any) => ({
+            id: item.id,
+            desc: item.description,
+            pax: item.pax,
+            cost: item.supplier_cost,
+            sell: item.sell_price
+          }))
+          setItems(mappedItems)
+        }
+      }
     }
     initPage()
   }, [enquiryId, router])
@@ -70,7 +93,6 @@ function BuilderContent() {
     if (service) {
       setItems([...items, { id: Date.now(), desc: `${service.name}`, pax: 1, cost: service.net_cost, sell: service.sell_price }])
       
-      // Auto-switch policy to aviation if a helicopter is added
       if (service.name.toLowerCase().includes('helicopter')) {
         setPolicyType('aviation')
       }
@@ -98,6 +120,10 @@ function BuilderContent() {
 
   async function handleSave() {
     setIsSaving(true)
+    
+    // We will delete the old draft items and re-insert to prevent duplicates
+    // In a production app, you would update the existing items.
+    
     const res = await fetch('/api/quote', {
       method: 'POST',
       body: JSON.stringify({ 
@@ -108,9 +134,11 @@ function BuilderContent() {
         total: totalMUR, 
         currency: quoteCurrency,
         exchange_rate: currentRate,
-        items 
+        items,
+        existing_ref: savedRef // Pass the draft ref if it exists
       })
     })
+    
     if (res.ok) {
       const data = await res.json()
       setSavedRef(data.ref)
@@ -145,7 +173,6 @@ function BuilderContent() {
         </div>
         <div className="flex items-center gap-4">
           
-          {/* POLICY SELECTOR */}
           <div className="flex items-center gap-2 bg-[#133A2E] border border-[#C9A961] rounded-sm px-3 py-1">
             <span className="text-[10px] uppercase tracking-widest text-[#C9A961]">Terms:</span>
             <select value={policyType} onChange={(e) => setPolicyType(e.target.value as any)} className="bg-transparent text-white text-sm focus:outline-none cursor-pointer">
@@ -297,7 +324,6 @@ function BuilderContent() {
               <p>SWIFT / BIC: [To be added]</p>
             </div>
             
-            {/* DYNAMIC TERMS & CANCELLATION POLICY */}
             <div className="border-t border-[#E5DFD3] mt-4 pt-4 md:border-none md:mt-0 md:pt-0">
               <p className="font-medium text-[#1B4D3E] mb-2 flex items-center gap-2">
                 {policyType === 'aviation' ? <ShieldAlert size={16} className="text-orange-600"/> : null}
@@ -322,7 +348,6 @@ function BuilderContent() {
           </div>
         </div>
 
-        {/* CANCELLATION POLICY BLOCK */}
         <div className="bg-white p-6 border border-[#E5DFD3] print:border-none print:p-0">
           <h3 className="font-serif text-lg text-[#1B4D3E] mb-2 flex items-center gap-2">
             <ShieldAlert size={18} className="text-[#C9A961]" /> Cancellation & Refund Policy

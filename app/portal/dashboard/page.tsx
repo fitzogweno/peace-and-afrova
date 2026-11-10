@@ -14,36 +14,49 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     async function fetchData() {
-      // Get the client ID from the cookie
-      const clientId = document.cookie.split('; ').find(row => row.startsWith('client_session='))?.split('=')[1]
+      // 1. SECURE: Check Supabase Auth Session
+      const { data: { session } } = await supabase.auth.getSession()
       
-      if (!clientId) {
+      if (!session) {
         router.push('/portal/login')
         return
       }
 
-      // Fetch client name
-      const { data: customer } = await supabase.from('customers').select('full_name').eq('id', clientId).single()
-      if (customer) setClientName(customer.full_name)
-
-      // Fetch all their bookings
-      const { data: bookingsData } = await supabase
-        .from('bookings')
-        .select(`*, quotations ( enquiries ( customer_id ) )`)
-        .neq('payment_status', 'Pending')
+      // 2. Fetch customer record securely based on their Auth ID
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('id, full_name')
+        .eq('auth_id', session.user.id)
+        .single()
       
-      if (bookingsData) {
-        // Filter to only show this client's bookings
-        const myBookings = bookingsData.filter((b: any) => b.quotations?.enquiries?.customer_id === clientId)
-        setBookings(myBookings)
+      if (customer) {
+        setClientName(customer.full_name)
+
+        // 3. SMART FETCH: Only fetch THIS client's bookings from the database
+        // No more downloading the whole database and filtering in the browser.
+        const { data: bookingsData } = await supabase
+          .from('bookings')
+          .select(`
+            *,
+            quotations!inner ( 
+              enquiries!inner ( customer_id ) 
+            )
+          `)
+          .eq('quotations.enquiries.customer_id', customer.id)
+          .neq('payment_status', 'Pending')
+          .order('travel_start', { ascending: true })
+        
+        if (bookingsData) {
+          setBookings(bookingsData)
+        }
       }
       setLoading(false)
     }
     fetchData()
   }, [router])
 
-  function handleLogout() {
-    document.cookie = "client_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
+  async function handleLogout() {
+    await supabase.auth.signOut()
     router.push('/portal/login')
   }
 
@@ -62,13 +75,15 @@ export default function ClientDashboard() {
         </div>
 
         {loading ? (
-          <p className="text-center text-gray-500">Loading your trips...</p>
+          <p className="text-center text-gray-500 animate-pulse">Loading your secure trips...</p>
         ) : bookings.length === 0 ? (
           <div className="bg-white p-12 text-center border border-[#E5DFD3] shadow-sm">
             <Plane size={48} className="mx-auto text-[#C9A961] mb-4" />
             <h2 className="font-serif text-2xl text-[#1B4D3E] mb-2">No trips yet</h2>
             <p className="text-gray-600 mb-8">You haven't completed a journey with us yet.</p>
-            <Link href="/experiences" className="btn-primary">Explore Experiences</Link>
+            <Link href="/experiences" className="bg-[#1B4D3E] text-white px-8 py-3 text-xs uppercase tracking-widest font-bold hover:bg-[#C9A961] hover:text-[#1B4D3E] transition">
+              Explore Experiences
+            </Link>
           </div>
         ) : (
           <div className="space-y-4">
@@ -78,10 +93,12 @@ export default function ClientDashboard() {
                   <div className="text-xs tracking-widest uppercase text-gray-500 mb-1">Ref: {booking.booking_ref}</div>
                   <div className="font-serif text-xl text-[#1B4D3E]">{booking.customer_name}</div>
                   <div className="text-sm text-gray-600">Travel Date: {booking.travel_start}</div>
+                  <div className="text-xs font-bold text-[#3D8B8B] mt-2 uppercase tracking-widest">{booking.payment_status}</div>
                 </div>
-                <div className="flex gap-3">
-                  <Link href={`/portal/itinerary?ref=${booking.booking_ref}`} className="flex items-center gap-2 bg-[#1B4D3E] text-white px-6 py-3 text-xs uppercase tracking-widest hover:bg-[#C9A961] hover:text-[#1B4D3E] transition">
-                    View Itinerary <ArrowRight size={14} />
+                <div className="flex gap-3 w-full md:w-auto">
+                  {/* Changed to route to the main Hub instead of the Itinerary */}
+                  <Link href={`/portal/hub?ref=${booking.booking_ref}`} className="w-full md:w-auto flex justify-center items-center gap-2 bg-[#1B4D3E] text-white px-6 py-3 text-xs uppercase tracking-widest hover:bg-[#C9A961] hover:text-[#1B4D3E] transition">
+                    Enter Portal <ArrowRight size={14} />
                   </Link>
                 </div>
               </div>

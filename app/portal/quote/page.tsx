@@ -25,7 +25,7 @@ function PortalContent() {
   useEffect(() => {
     if (!quoteRef) return
     async function fetchQuote() {
-      // UPDATED: Fetching the service_credit from the linked bookings table
+      // Fetching the service_credit from the linked bookings table
       const { data } = await supabase
         .from('quotations')
         .select(`*, enquiries ( customers (full_name) ), bookings ( service_credit )`)
@@ -41,9 +41,23 @@ function PortalContent() {
   const formatQuotePrice = (amountInMUR: number) => {
     const curr = quote?.currency || 'MUR'
     if (curr === 'MUR') return `Rs ${amountInMUR.toLocaleString()}`
-    const rate = curr === 'USD' ? 45 : curr === 'EUR' ? 49 : 1
+    
+    const rate = quote?.exchange_rate
+    
+    // Safety guard: If it's null, fallback to MUR to avoid displaying wrong foreign numbers
+    if (!rate || rate <= 0) {
+      console.warn('Missing exchange_rate for quote', quote?.booking_ref)
+      return `Rs ${amountInMUR.toLocaleString()}`
+    }
+
+    // SMART FIX: Math is Division because the rate is stored as 45/49
     const converted = amountInMUR / rate
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, maximumFractionDigits: 0 }).format(converted)
+    
+    return new Intl.NumberFormat('en-US', { 
+      style: 'currency', 
+      currency: curr, 
+      maximumFractionDigits: 0 
+    }).format(converted)
   }
 
   async function handleAccept() {
@@ -128,7 +142,7 @@ function PortalContent() {
           </div>
         </div>
 
-        {/* --- NEW: SERVICE GUARANTEE BANNER --- */}
+        {/* --- SERVICE GUARANTEE BANNER --- */}
         {serviceCredit > 0 && (
           <div className="bg-green-50 border border-green-200 p-4 mb-8 flex items-start gap-3 rounded-sm animate-in fade-in slide-in-from-top-4">
             <ShieldCheck className="text-green-600 shrink-0 mt-0.5" size={24} />

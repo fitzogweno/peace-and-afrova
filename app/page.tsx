@@ -1,75 +1,73 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight, ShieldCheck, Clock, HeartHandshake, UserCheck, MapPin, Compass, Star, Accessibility } from 'lucide-react'
+import { ArrowRight, ShieldCheck, Clock, HeartHandshake, UserCheck, MapPin, Star, Accessibility } from 'lucide-react'
 import { useApp } from './context/AppContext'
 import GlobalPreferences from './components/GlobalPreferences'
 
+const JOURNEYS = [
+  {
+    title: 'The Honeymoon Escape',
+    duration: '10 Days',
+    destination: 'Mauritius',
+    type: 'Honeymoon',
+    style: 'Luxury',
+    activity: 'Romantic Experiences',
+    image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&q=80',
+    tag: '01 · ROMANCE'
+  },
+  {
+    title: 'The Family Island Hopper',
+    duration: '12 Days',
+    destination: 'Multiple Islands',
+    type: 'Family',
+    style: 'Luxury',
+    activity: 'Family Experiences',
+    image: 'https://images.unsplash.com/photo-1602002418082-a4443e081dd1?w=800&q=80',
+    tag: '02 · FAMILY'
+  },
+  {
+    title: 'The Private Island Discovery',
+    duration: '5 Days',
+    destination: 'Mauritius',
+    type: 'VIP',
+    style: 'Ultra Luxury',
+    activity: 'Private Helicopter and Ocean Experiences',
+    image: 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=800&q=80',
+    tag: '03 · EXCLUSIVE'
+  }
+]
+
+const REVIEWS = [
+  {
+    name: 'Sarah & James',
+    location: 'London, UK',
+    destination: 'Mauritius',
+    rating: 5,
+    text: 'An exceptional experience from the moment we arrived. The private transfer was seamless, and our driver was waiting with cold towels. It felt like true Swiss precision in the tropics.',
+    occasion: 'Honeymoon'
+  },
+  {
+    name: 'The Henderson Family',
+    location: 'Dubai, UAE',
+    destination: 'Mauritius & Rodrigues',
+    rating: 5,
+    text: 'Travelling with three young children is never easy, but Peace & Afrova handled everything. The car seats were ready, the villa was stocked, and the island hopper flight was a dream.',
+    occasion: 'Family Holiday'
+  },
+  {
+    name: 'Elena R.',
+    location: 'Paris, France',
+    destination: 'Seychelles',
+    rating: 5,
+    text: 'The yacht charter was the highlight of our lives. The crew knew exactly where to take us to avoid the crowds. We didn\'t have to lift a finger.',
+    occasion: 'Anniversary'
+  }
+]
+
 export default function Home() {
   const { t } = useApp()
-
-  // --- SIGNATURE JOURNEYS DATA ---
-  const journeys = [
-    {
-      title: 'The Honeymoon Escape',
-      duration: '10 Days',
-      destination: 'Mauritius',
-      type: 'Honeymoon',
-      style: 'Luxury',
-      activity: 'Romantic Experiences',
-      image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&q=80',
-      tag: '01 · ROMANCE'
-    },
-    {
-      title: 'The Family Island Hopper',
-      duration: '12 Days',
-      destination: 'Multiple Islands',
-      type: 'Family',
-      style: 'Luxury',
-      activity: 'Family Experiences',
-      image: 'https://images.unsplash.com/photo-1602002418082-a4443e081dd1?w=800&q=80',
-      tag: '02 · FAMILY'
-    },
-    {
-      title: 'The Private Island Discovery',
-      duration: '5 Days',
-      destination: 'Mauritius',
-      type: 'VIP',
-      style: 'Ultra Luxury',
-      activity: 'Private Helicopter and Ocean Experiences',
-      image: 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=800&q=80',
-      tag: '03 · EXCLUSIVE'
-    }
-  ]
-
-  // --- GUEST JOURNAL DATA ---
-  const reviews = [
-    {
-      name: 'Sarah & James',
-      location: 'London, UK',
-      destination: 'Mauritius',
-      rating: 5,
-      text: 'An exceptional experience from the moment we arrived. The private transfer was seamless, and our driver was waiting with cold towels. It felt like true Swiss precision in the tropics.',
-      occasion: 'Honeymoon'
-    },
-    {
-      name: 'The Henderson Family',
-      location: 'Dubai, UAE',
-      destination: 'Mauritius & Rodrigues',
-      rating: 5,
-      text: 'Travelling with three young children is never easy, but Peace & Afrova handled everything. The car seats were ready, the villa was stocked, and the island hopper flight was a dream.',
-      occasion: 'Family Holiday'
-    },
-    {
-      name: 'Elena R.',
-      location: 'Paris, France',
-      destination: 'Seychelles',
-      rating: 5,
-      text: 'The yacht charter was the highlight of our lives. The crew knew exactly where to take us to avoid the crowds. We didn\'t have to lift a finger.',
-      occasion: 'Anniversary'
-    }
-  ]
 
   return (
     <main className="min-h-screen bg-[#F5F0E6] font-sans text-[#1A1A1A]">
@@ -77,11 +75,17 @@ export default function Home() {
       {/* NAVIGATION */}
       <nav className="absolute top-0 left-0 right-0 z-50 px-6 py-6 mt-[32px]">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center">
-            <div className="text-white">
-              <div className="text-xs tracking-[0.3em] uppercase opacity-90 font-light">Peace and Afrova</div>
-              <div className="text-lg font-serif tracking-wider">Group Company Ltd</div>
-            </div>
+          
+          {/* NEW LOGO IMAGE */}
+          <Link href="/" className="flex items-center" aria-label="Peace and Afrova Home">
+            <Image 
+              src="/logo-light.png" 
+              alt="Peace and Afrova" 
+              width={220} 
+              height={60} 
+              className="w-auto h-12 md:h-16 object-contain" 
+              priority
+            />
           </Link>
 
           <div className="hidden md:flex items-center gap-8 text-white text-xs tracking-[0.2em] uppercase font-light">
@@ -101,9 +105,18 @@ export default function Home() {
       {/* HERO */}
       <section className="relative h-[calc(100vh-32px)] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 w-full h-full">
-          <video autoPlay loop muted playsInline preload="auto" className="absolute inset-0 w-full h-full object-cover" poster="https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=2000">
+          <video 
+            autoPlay 
+            loop 
+            muted 
+            playsInline 
+            preload="metadata" 
+            className="absolute inset-0 w-full h-full object-cover motion-reduce:hidden" 
+            poster="https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=2000"
+          >
             <source src="https://res.cloudinary.com/ey8jd5oe/video/upload/v1792921746/hero.mp4" type="video/mp4" />
           </video>
+          <div className="hidden motion-reduce:block absolute inset-0 bg-[url('https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=2000')] bg-cover bg-center" />
         </div>
         <div className="absolute inset-0 bg-gradient-to-b from-[#1B4D3E]/70 via-[#1B4D3E]/40 to-[#1B4D3E]/80" />
 
@@ -128,7 +141,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 03. SIGNATURE JOURNEYS */}
+      {/* SIGNATURE JOURNEYS */}
       <section className="py-24 px-6 bg-white border-y border-[#E5DFD3]">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -136,13 +149,19 @@ export default function Home() {
             <h2 className="font-serif text-4xl text-[#1B4D3E] mb-4">Curated inspirations. Entirely your own.</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            {journeys.map((journey) => {
+            {JOURNEYS.map((journey) => {
               const params = new URLSearchParams({ destination: journey.destination, journey_type: journey.type, duration: journey.duration, style: journey.style, activity: journey.activity }).toString()
               return (
                 <article key={journey.title} className="group flex flex-col">
-                  <div className="relative aspect-[4/5] overflow-hidden mb-6">
-                    <img src={journey.image} alt={journey.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
-                    <div className="absolute top-4 left-4 bg-[#1B4D3E] text-[#C9A961] px-3 py-1 text-[10px] font-bold uppercase tracking-widest">{journey.tag}</div>
+                  <div className="relative aspect-[4/5] overflow-hidden mb-6 bg-gray-200">
+                    <Image 
+                      src={journey.image} 
+                      alt={journey.title} 
+                      fill
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      className="object-cover group-hover:scale-105 transition duration-700" 
+                    />
+                    <div className="absolute top-4 left-4 bg-[#1B4D3E] text-[#C9A961] px-3 py-1 text-[10px] font-bold uppercase tracking-widest z-10">{journey.tag}</div>
                   </div>
                   <div className="flex-1 flex flex-col">
                     <div className="flex justify-between items-center text-[10px] tracking-widest uppercase text-[#777777] font-bold mb-2"><span>{journey.destination}</span><span>{journey.duration}</span></div>
@@ -157,12 +176,18 @@ export default function Home() {
         </div>
       </section>
 
-      {/* --- INCLUSIVE JOURNEYS SECTION --- */}
+      {/* INCLUSIVE JOURNEYS */}
       <section className="py-24 px-6 bg-[#F5F0E6]">
         <div className="max-w-5xl mx-auto">
           <div className="bg-[#1B4D3E] text-white overflow-hidden shadow-2xl flex flex-col md:flex-row">
             <div className="md:w-1/2 relative min-h-[400px]">
-              <img src="https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?w=1200&q=80" alt="Accessible boardwalk over the ocean" className="absolute inset-0 w-full h-full object-cover" />
+              <Image 
+                src="https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?w=1200&q=80" 
+                alt="Accessible boardwalk over the ocean" 
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover" 
+              />
             </div>
             <div className="md:w-1/2 p-10 md:p-16 flex flex-col justify-center">
               <div className="flex items-center gap-2 text-[10px] tracking-[0.3em] uppercase text-[#C9A961] mb-6 font-bold">
@@ -177,7 +202,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 04. THE CONCIERGE PROMISE */}
+      {/* CONCIERGE PROMISE */}
       <section className="py-24 px-6 bg-white border-y border-[#E5DFD3]">
         <div className="max-w-5xl mx-auto text-center">
           <div className="text-[10px] tracking-[0.3em] uppercase text-[#C9A961] mb-6 font-bold">The Peace and Afrova Standard</div>
@@ -193,7 +218,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 05. THE GUEST JOURNAL (MARQUEE) */}
+      {/* GUEST JOURNAL (MARQUEE) */}
       <section className="py-24 bg-[#F5F0E6] overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 text-center mb-16">
           <div className="text-[10px] tracking-[0.3em] uppercase text-[#C9A961] mb-4 font-bold">The Guest Journal</div>
@@ -201,9 +226,9 @@ export default function Home() {
           <p className="text-[#777777] font-light">A collection of moments and memories shared by our guests.</p>
         </div>
         <div className="relative w-full flex overflow-x-hidden group">
-          <div className="flex animate-marquee whitespace-nowrap gap-8 py-4 hover:[animation-play-state:paused]">
-            {[...reviews, ...reviews].map((review, index) => (
-              <div key={index} className="bg-white p-8 border border-[#E5DFD3] shadow-sm flex flex-col w-[350px] md:w-[450px] shrink-0 whitespace-normal">
+          <div className="flex animate-marquee whitespace-nowrap gap-8 py-4 hover:[animation-play-state:paused] motion-reduce:animate-none motion-reduce:flex-wrap motion-reduce:justify-center">
+            {[...REVIEWS, ...REVIEWS].map((review, index) => (
+              <div key={index} className="bg-white p-8 border border-[#E5DFD3] shadow-sm flex flex-col w-[350px] md:w-[450px] shrink-0 whitespace-normal transition-transform duration-300 hover:-translate-y-2">
                 <div className="flex gap-1 text-[#C9A961] mb-6">{[...Array(review.rating)].map((_, i) => <Star key={i} size={16} fill="currentColor" />)}</div>
                 <p className="text-[#4A4A4A] font-light leading-relaxed italic mb-8 flex-1">"{review.text}"</p>
                 <div className="border-t border-[#E5DFD3] pt-4">
@@ -217,7 +242,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 07. CTA */}
+      {/* CTA */}
       <section className="py-32 px-6 bg-white border-t border-[#E5DFD3]">
         <div className="max-w-3xl mx-auto text-center">
           <div className="text-[10px] tracking-[0.3em] uppercase text-[#777777] mb-6 font-bold">Begin</div>
@@ -232,12 +257,59 @@ export default function Home() {
       <footer className="bg-[#1B4D3E] text-white/70 py-16 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
-            <div><div className="text-xs tracking-[0.3em] uppercase text-[#C9A961] mb-2 font-bold">Peace and Afrova</div><div className="font-serif text-lg text-white mb-4">Group Company Ltd</div><p className="text-xs font-light">Curating exceptional Indian Ocean journeys with absolute precision.</p></div>
-            <div><div className="text-[10px] tracking-[0.3em] uppercase mb-4 text-[#C9A961] font-bold">Destinations</div><ul className="space-y-2 text-xs"><li><Link href="/destinations/mauritius" className="hover:text-white transition">Mauritius</Link></li><li><Link href="/destinations/rodrigues" className="hover:text-white transition">Rodrigues</Link></li><li><Link href="/destinations/reunion" className="hover:text-white transition">Réunion</Link></li><li><Link href="/destinations/seychelles" className="hover:text-white transition">Seychelles</Link></li></ul></div>
-            <div><div className="text-[10px] tracking-[0.3em] uppercase mb-4 text-[#C9A961] font-bold">Company</div><ul className="space-y-2 text-xs"><li><Link href="/about" className="hover:text-white transition">About Us</Link></li><li><Link href="/journeys" className="hover:text-white transition">Signature Journeys</Link></li><li><Link href="/partners" className="hover:text-white transition">Travel Partners</Link></li><li><Link href="/contact" className="hover:text-white transition">Contact Us</Link></li></ul></div>
-            <div><div className="text-[10px] tracking-[0.3em] uppercase mb-4 text-[#C9A961] font-bold">Contact</div><ul className="space-y-2 text-xs"><li>Curepipe Forest Side, Mauritius</li><li>hello@peaceandafrova.com</li><li>+230 5740 0125</li></ul></div>
+            
+            <div>
+              {/* NEW FOOTER LOGO IMAGE */}
+              <Link href="/" className="inline-block mb-4">
+                <Image 
+                  src="/logo-light.png" 
+                  alt="Peace and Afrova" 
+                  width={200} 
+                  height={50} 
+                  className="w-auto h-12 object-contain" 
+                />
+              </Link>
+              <p className="text-xs font-light">Curating exceptional Indian Ocean journeys with absolute precision.</p>
+            </div>
+            
+            <div>
+              <div className="text-[10px] tracking-[0.3em] uppercase mb-4 text-[#C9A961] font-bold">Destinations</div>
+              <ul className="space-y-2 text-xs">
+                <li><Link href="/destinations/mauritius" className="hover:text-white transition">Mauritius</Link></li>
+                <li><Link href="/destinations/rodrigues" className="hover:text-white transition">Rodrigues</Link></li>
+                <li><Link href="/destinations/reunion" className="hover:text-white transition">Réunion</Link></li>
+                <li><Link href="/destinations/seychelles" className="hover:text-white transition">Seychelles</Link></li>
+              </ul>
+            </div>
+            
+            <div>
+              <div className="text-[10px] tracking-[0.3em] uppercase mb-4 text-[#C9A961] font-bold">Company</div>
+              <ul className="space-y-2 text-xs">
+                <li><Link href="/about" className="hover:text-white transition">About Us</Link></li>
+                <li><Link href="/journeys" className="hover:text-white transition">Signature Journeys</Link></li>
+                <li><Link href="/partners" className="hover:text-white transition">Travel Partners</Link></li>
+                <li><Link href="/careers" className="hover:text-white transition">Careers</Link></li>
+                <li><Link href="/contact" className="hover:text-white transition">Contact Us</Link></li>
+              </ul>
+            </div>
+            
+            <div>
+              <div className="text-[10px] tracking-[0.3em] uppercase mb-4 text-[#C9A961] font-bold">Contact</div>
+              <ul className="space-y-2 text-xs">
+                <li>Curepipe Forest Side, Mauritius</li>
+                <li>hello@peaceandafrova.com</li>
+                <li>+230 5740 0125</li>
+              </ul>
+            </div>
           </div>
-          <div className="border-t border-white/10 pt-8 text-xs text-white/40 flex flex-col md:flex-row justify-between gap-4"><div>© 2026 Peace and Afrova Group Company Ltd.</div><div className="flex gap-4"><Link href="/policies/terms" className="hover:text-white transition">Terms</Link><Link href="/policies/privacy" className="hover:text-white transition">Privacy</Link></div></div>
+          
+          <div className="border-t border-white/10 pt-8 text-xs text-white/40 flex flex-col md:flex-row justify-between gap-4">
+            <div>© 2026 Peace and Afrova Group Company Ltd.</div>
+            <div className="flex gap-4">
+              <Link href="/policies/terms" className="hover:text-white transition">Terms</Link>
+              <Link href="/policies/privacy" className="hover:text-white transition">Privacy</Link>
+            </div>
+          </div>
         </div>
       </footer>
     </main>

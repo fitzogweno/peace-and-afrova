@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../utils/supabase'
-import { Printer, MapPin, CheckCircle, Clock, Compass, Phone, Mail, Car, CloudSun, MessageCircle, Lock, ShieldCheck } from 'lucide-react'
+import { Printer, MapPin, CheckCircle, Clock, Compass, Phone, Mail, Car, CloudSun, MessageCircle, Lock, ShieldCheck, Sparkles, Utensils, PartyPopper, Send, X, Plus } from 'lucide-react'
 import QRCode from 'react-qr-code'
 
 function ItineraryContent() {
@@ -15,10 +15,16 @@ function ItineraryContent() {
   const [weather, setWeather] = useState<any>(null)
   const [isDriverUnlocked, setIsDriverUnlocked] = useState(false)
 
+  // --- UPSELL / REQUEST STATE ---
+  const [showRequestModal, setShowRequestModal] = useState(false)
+  const [requestCategory, setRequestCategory] = useState('')
+  const [requestDetails, setRequestDetails] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [requestSuccess, setRequestSuccess] = useState(false)
+
   useEffect(() => {
     if (!quoteRef) return
     async function fetchBooking() {
-      // Added service_credit to the query
       const { data } = await supabase
         .from('bookings')
         .select(`
@@ -26,7 +32,7 @@ function ItineraryContent() {
           quotations ( 
             quotation_items ( * ), 
             supplier_bookings ( * ), 
-            enquiries ( hotel_details, customers ( full_name ) ) 
+            enquiries ( hotel_details, destination, customers ( full_name ) ) 
           )
         `)
         .eq('booking_ref', quoteRef)
@@ -36,7 +42,6 @@ function ItineraryContent() {
         setBooking(data)
         fetchWeather()
         
-        // 10-Day Driver Unlock Logic
         const travelDate = new Date(data.travel_start)
         const today = new Date()
         const diffTime = travelDate.getTime() - today.getTime()
@@ -51,10 +56,16 @@ function ItineraryContent() {
     fetchBooking()
   }, [quoteRef])
 
-  // UPDATED: Fetching from our secure API instead of exposing the key
   async function fetchWeather() {
     try {
-      const res = await fetch('/api/weather?slug=mauritius')
+      // Default to Mauritius if no destination provided
+      const destSlug = booking?.quotations?.enquiries?.destination?.toLowerCase().includes('seychelles') 
+        ? 'seychelles' 
+        : booking?.quotations?.enquiries?.destination?.toLowerCase().includes('reunion') 
+          ? 'reunion' 
+          : 'mauritius';
+          
+      const res = await fetch(`/api/weather?slug=${destSlug}`)
       const data = await res.json()
       if (res.ok) setWeather(data)
     } catch (err) {
@@ -62,10 +73,37 @@ function ItineraryContent() {
     }
   }
 
+  // --- UPSELL REQUEST SUBMISSION ---
+  async function handleRequestSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setIsSubmitting(true)
+
+    try {
+      await fetch('/api/concierge-request', {
+        method: 'POST',
+        body: JSON.stringify({
+          bookingRef: quoteRef,
+          customerName: booking.customer_name,
+          requestType: `UPSell: ${requestCategory}`,
+          requestDetails: requestDetails
+        })
+      })
+      setRequestSuccess(true)
+      setTimeout(() => {
+        setShowRequestModal(false)
+        setRequestSuccess(false)
+        setRequestDetails('')
+      }, 3000)
+    } catch (err) {
+      alert("Failed to send request.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   if (loading) return <div className="min-h-screen flex items-center justify-center text-[#1B4D3E]">Loading...</div>
   if (!booking) return <div className="min-h-screen flex items-center justify-center text-red-600">Itinerary not found.</div>
 
-  // Safely handle Supabase joins that might return arrays
   const quotation = Array.isArray(booking.quotations) ? booking.quotations[0] : booking.quotations;
   const enquiries = quotation?.enquiries;
   const enquiry = Array.isArray(enquiries) ? enquiries[0] : enquiries;
@@ -75,7 +113,7 @@ function ItineraryContent() {
   const hotelDetails = enquiry?.hotel_details || 'To be confirmed'
   
   const primaryTransfer = supplierBookings.length > 0 ? supplierBookings[0] : null
-  const serviceCredit = booking.service_credit || 0 // NEW: Get the service credit
+  const serviceCredit = booking.service_credit || 0 
 
   const destination = hotelDetails === 'To be confirmed' || !hotelDetails ? 'Port Louis, Mauritius' : hotelDetails
   const mapUrl = `https://maps.google.com/maps?saddr=Sir+Seewoosagur+Ramgoolam+International+Airport,+Mauritius&daddr=${encodeURIComponent(destination)}&output=embed`
@@ -107,6 +145,7 @@ function ItineraryContent() {
           </div>
         )}
 
+        {/* ... Rest of the Hero Header and Route Map (Kept identical to your existing code) ... */}
         <div className="flex flex-col md:flex-row justify-between items-start border-b border-[#E5DFD3] pb-8 mb-8">
           <div>
             <div className="text-xs tracking-[0.3em] uppercase text-[#C9A961] mb-2 font-medium">Peace and Afrova</div>
@@ -141,8 +180,7 @@ function ItineraryContent() {
           {weather && (
             <div className="bg-[#1B4D3E] text-white p-6 flex items-center justify-between print:bg-white print:text-black print:border print:border-gray-300">
               <div>
-                <div className="text-xs tracking-widest uppercase text-[#C9A961] mb-1 font-medium">Mauritius Weather</div>
-                {/* UPDATED: Using new weather data shape */}
+                <div className="text-xs tracking-widest uppercase text-[#C9A961] mb-1 font-medium">{enquiry?.destination || 'Mauritius'} Weather</div>
                 <div className="text-2xl font-serif">{Math.round(weather.temp)}°C · {weather.main}</div>
                 <div className="text-xs opacity-70 mt-1 print:text-gray-600 capitalize">{weather.description}</div>
               </div>
@@ -163,12 +201,7 @@ function ItineraryContent() {
                     <span>Plate: <strong className="text-[#1B4D3E]">{primaryTransfer.vehicle_plate || 'TBC'}</strong></span>
                   </div>
                   {primaryTransfer.driver_phone && (
-                    <a 
-                      href={`https://wa.me/${primaryTransfer.driver_phone.replace(/\s+/g, '')}`} 
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 bg-green-600 text-white py-2 text-xs uppercase tracking-widest hover:bg-green-700 transition print:hidden"
-                    >
+                    <a href={`https://wa.me/${primaryTransfer.driver_phone.replace(/\s+/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-green-600 text-white py-2 text-xs uppercase tracking-widest hover:bg-green-700 transition print:hidden">
                       <MessageCircle size={14} /> Chat with Driver on WhatsApp
                     </a>
                   )}
@@ -187,17 +220,10 @@ function ItineraryContent() {
           <div className="text-xs tracking-widest uppercase text-[#1B4D3E] mb-2 font-medium flex items-center gap-2">
             <MapPin size={14} /> Your Route from SSR Airport
           </div>
-          <iframe
-            width="100%"
-            height="250"
-            style={{ border: 0 }}
-            loading="lazy"
-            allowFullScreen
-            referrerPolicy="no-referrer-when-downgrade"
-            src={mapUrl}
-          ></iframe>
+          <iframe width="100%" height="250" style={{ border: 0 }} loading="lazy" allowFullScreen referrerPolicy="no-referrer-when-downgrade" src={mapUrl}></iframe>
         </div>
 
+        {/* --- LIVE TIMELINE / ARRANGEMENTS --- */}
         <div className="space-y-8">
           <div className="flex items-center gap-3 border-b border-[#E5DFD3] pb-2 break-inside-avoid">
             <Compass className="text-[#C9A961]" size={20} />
@@ -209,7 +235,7 @@ function ItineraryContent() {
             return (
               <div key={item.id} className="relative print-card pl-6 border-l-2 border-[#C9A961] flex flex-col md:flex-row gap-6 justify-between items-start md:items-center break-inside-avoid">
                 <div className="flex-1">
-                  <div className="text-xs tracking-widest uppercase text-gray-400 mb-1">Service {index + 1}</div>
+                  <div className="text-xs tracking-widest uppercase text-gray-400 mb-1">Day {index + 1} / Service</div>
                   <h3 className="font-serif text-xl text-[#1B4D3E] mb-3">{item.description}</h3>
                   
                   {savedBooking ? (
@@ -225,10 +251,7 @@ function ItineraryContent() {
 
                 {savedBooking && (
                   <div className="bg-white p-2 border border-[#E5DFD3] flex flex-col items-center break-inside-avoid">
-                    <QRCode 
-                      value={`https://peaceandafrova.com/driver/scan?voucherId=${savedBooking.id}&client=${encodeURIComponent(booking.customer_name)}`} 
-                      size={100} 
-                    />
+                    <QRCode value={`https://peaceandafrova.com/driver/scan?voucherId=${savedBooking.id}&client=${encodeURIComponent(booking.customer_name)}`} size={100} />
                     <p className="text-[9px] uppercase tracking-widest text-gray-500 mt-2">Scan on Pickup</p>
                   </div>
                 )}
@@ -237,7 +260,38 @@ function ItineraryContent() {
           })}
         </div>
 
-        <div className="mt-16 bg-[#1B4D3E] p-6 text-white text-center print:bg-white print:text-black print:border print:border-gray-300 break-inside-avoid">
+        {/* --- NEW: ENHANCE YOUR JOURNEY (UPSELL WIDGET) --- */}
+        <div className="mt-16 bg-[#FAF7F0] border border-[#C9A961] p-8 print:hidden shadow-sm">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-2">
+              <Sparkles className="text-[#C9A961]" size={28} />
+            </div>
+            <h3 className="font-serif text-2xl text-[#1B4D3E]">Enhance Your Experience</h3>
+            <p className="text-sm text-gray-500 mt-1">Need something extra? Our team is ready to help.</p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <button onClick={() => { setRequestCategory('Private Chauffeur'); setShowRequestModal(true); }} className="bg-white border border-[#E5DFD3] p-4 text-center hover:border-[#C9A961] hover:shadow-md transition group">
+              <Car className="mx-auto text-[#C9A961] mb-3 group-hover:scale-110 transition" size={24} />
+              <span className="text-xs font-bold text-[#1B4D3E] uppercase tracking-wider block">Private Chauffeur</span>
+            </button>
+            <button onClick={() => { setRequestCategory('Excursions & Tours'); setShowRequestModal(true); }} className="bg-white border border-[#E5DFD3] p-4 text-center hover:border-[#C9A961] hover:shadow-md transition group">
+              <Compass className="mx-auto text-[#C9A961] mb-3 group-hover:scale-110 transition" size={24} />
+              <span className="text-xs font-bold text-[#1B4D3E] uppercase tracking-wider block">Excursions</span>
+            </button>
+            <button onClick={() => { setRequestCategory('Restaurant Booking'); setShowRequestModal(true); }} className="bg-white border border-[#E5DFD3] p-4 text-center hover:border-[#C9A961] hover:shadow-md transition group">
+              <Utensils className="mx-auto text-[#C9A961] mb-3 group-hover:scale-110 transition" size={24} />
+              <span className="text-xs font-bold text-[#1B4D3E] uppercase tracking-wider block">Fine Dining</span>
+            </button>
+            <button onClick={() => { setRequestCategory('Special Occasion'); setShowRequestModal(true); }} className="bg-white border border-[#E5DFD3] p-4 text-center hover:border-[#C9A961] hover:shadow-md transition group">
+              <PartyPopper className="mx-auto text-[#C9A961] mb-3 group-hover:scale-110 transition" size={24} />
+              <span className="text-xs font-bold text-[#1B4D3E] uppercase tracking-wider block">Special Event</span>
+            </button>
+          </div>
+        </div>
+
+        {/* CONCIERGE BOX */}
+        <div className="mt-12 bg-[#1B4D3E] p-6 text-white text-center print:bg-white print:text-black print:border print:border-gray-300 break-inside-avoid">
           <h4 className="font-serif text-xl mb-2">Your Dedicated Concierge</h4>
           <p className="text-sm text-ivory/70 print:text-gray-600 mb-4">Should you require any assistance, please do not hesitate to contact us.</p>
           <div className="flex flex-col md:flex-row justify-center gap-6 text-sm">
@@ -247,6 +301,52 @@ function ItineraryContent() {
         </div>
 
       </div>
+
+      {/* --- UPSELL REQUEST MODAL --- */}
+      {showRequestModal && (
+        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 backdrop-blur-sm print:hidden">
+          <div className="bg-[#F5F0E6] w-full max-w-md p-8 shadow-2xl relative">
+            <button onClick={() => setShowRequestModal(false)} className="absolute top-4 right-4 text-gray-500 hover:text-black">
+              <X size={24} />
+            </button>
+            
+            {requestSuccess ? (
+              <div className="text-center py-12">
+                <CheckCircle className="mx-auto text-green-500 mb-4" size={48} />
+                <h3 className="font-serif text-2xl text-[#1B4D3E] mb-2">Request Sent!</h3>
+                <p className="text-sm text-gray-600">Our concierge will review your request and get back to you with options and pricing shortly.</p>
+              </div>
+            ) : (
+              <>
+                <h3 className="font-serif text-2xl text-[#1B4D3E] mb-2">Request: {requestCategory}</h3>
+                <p className="text-sm text-gray-500 mb-6">Tell us a little more about what you need.</p>
+                
+                <form onSubmit={handleRequestSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Details</label>
+                    <textarea 
+                      required 
+                      value={requestDetails} 
+                      onChange={(e) => setRequestDetails(e.target.value)} 
+                      rows={4} 
+                      placeholder={`E.g., We would like to arrange a ${requestCategory.toLowerCase()} for 2 people on Day 3.`} 
+                      className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961] bg-white"
+                    ></textarea>
+                  </div>
+                  <button 
+                    type="submit" 
+                    disabled={isSubmitting} 
+                    className="w-full bg-[#1B4D3E] text-white py-3 text-xs uppercase tracking-widest font-bold hover:bg-[#C9A961] hover:text-[#1B4D3E] transition disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSubmitting ? 'Sending Request...' : 'Send Request'} <Send size={14} />
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

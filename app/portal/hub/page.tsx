@@ -1,17 +1,19 @@
 "use client"
 
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
-import { FileText, Map, CheckCircle, Download, ArrowRight, ConciergeBell, X, Info, UserCheck } from 'lucide-react'
+import { FileText, Map, CheckCircle, Download, ArrowRight, ConciergeBell, X, Info, UserCheck, LogOut, Car, Compass, Utensils, PartyPopper, Sparkles } from 'lucide-react'
 
 function HubContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const quoteRef = searchParams.get('ref') || ''
 
   const [quote, setQuote] = useState<any>(null)
   const [booking, setBooking] = useState<any>(null)
+  const [conciergeRequests, setConciergeRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   // Concierge State
@@ -25,8 +27,17 @@ function HubContent() {
   const [isSubmittingIntake, setIsSubmittingIntake] = useState(false)
 
   useEffect(() => {
-    if (!quoteRef) return
     async function fetchData() {
+      // 1. SECURE: Ensure the user is logged in
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/portal/login')
+        return
+      }
+
+      if (!quoteRef) { setLoading(false); return }
+
+      // 2. Fetch Quote & Booking
       const { data: quoteData } = await supabase
         .from('quotations')
         .select(`*, enquiries ( travel_start, customers (full_name) )`)
@@ -43,30 +54,67 @@ function HubContent() {
           .maybeSingle()
 
         if (bookingData) setBooking(bookingData)
+
+        // 3. Fetch Client's Concierge/Upsell Requests
+        const { data: reqs } = await supabase
+          .from('concierge_requests')
+          .select('*')
+          .eq('booking_ref', quoteRef)
+          .order('created_at', { ascending: false })
+        
+        if (reqs) setConciergeRequests(reqs)
       }
       setLoading(false)
     }
     fetchData()
-  }, [quoteRef])
+  }, [quoteRef, router])
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/portal/login')
+  }
 
   async function handleConciergeSubmit(e: React.FormEvent) {
     e.preventDefault()
     setIsSubmittingRequest(true)
     
+    const isUpsell = ['Private Chauffeur', 'Excursions & Tours', 'Fine Dining', 'Special Event'].includes(requestType)
+
     await fetch('/api/concierge-request', {
       method: 'POST',
       body: JSON.stringify({
         bookingRef: quote.booking_ref,
         customerName: quote.enquiries?.customers?.full_name || 'Valued Client',
-        requestType: requestType,
+        requestType: isUpsell ? `UPSell: ${requestType}` : requestType,
         requestDetails: requestDetails
       })
     })
 
+    // Optimistically add to the list
+    setConciergeRequests([{
+      id: Date.now().toString(),
+      category: requestType,
+      request_details: requestDetails,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    }, ...conciergeRequests])
+
     setIsSubmittingRequest(false)
     setShowConcierge(false)
     setRequestDetails('')
-    alert("Concierge request sent! Our team will contact you shortly.")
+  }
+
+  async function acceptQuote(requestId: string) {
+    await supabase
+      .from('concierge_requests')
+      .update({ status: 'accepted' })
+      .eq('id', requestId)
+    
+    // Update local state so UI reflects immediately
+    setConciergeRequests(prev =>
+      prev.map(r => r.id === requestId ? { ...r, status: 'accepted' } : r)
+    )
+    // TODO: Trigger an email to admin that the client accepted the upsell
   }
 
   async function handleIntakeSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -88,7 +136,7 @@ function HubContent() {
     setShowIntake(false)
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-[#1B4D3E]">Loading your private portal...</div>
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-[#1B4D3E] animate-pulse">Loading your private portal...</div>
   if (!quote) return <div className="min-h-screen flex items-center justify-center text-red-600">Link invalid or expired.</div>
 
   const clientName = quote.enquiries?.customers?.full_name || 'Valued Client'
@@ -102,15 +150,20 @@ function HubContent() {
     <div className="min-h-screen bg-[#F5F0E6] py-12 px-6 font-sans text-[#1A1A1A]">
       <div className="max-w-4xl mx-auto">
         
-        {/* PERSONALIZED HEADER */}
-        <div className="text-center mb-12">
-          <h1 className="font-serif text-4xl md:text-5xl text-[#1B4D3E] mb-4">Welcome, {clientName.split(' ')[0]}</h1>
-          <p className="text-xs tracking-[0.2em] uppercase text-[#3D8B8B] mb-2">Your Private Travel Portal</p>
-          <div className="text-sm text-gray-600 flex justify-center gap-4">
-            <span>Ref: <strong className="text-[#1B4D3E]">{quote.booking_ref}</strong></span>
-            <span>|</span>
-            <span>Departure: <strong className="text-[#1B4D3E]">{travelStart}</strong></span>
+        {/* PERSONALIZED HEADER & LOGOUT */}
+        <div className="flex justify-between items-start mb-12">
+          <div>
+            <h1 className="font-serif text-4xl md:text-5xl text-[#1B4D3E] mb-4">Welcome, {clientName.split(' ')[0]}</h1>
+            <p className="text-xs tracking-[0.2em] uppercase text-[#3D8B8B] mb-2">Your Private Travel Portal</p>
+            <div className="text-sm text-gray-600 flex gap-4">
+              <span>Ref: <strong className="text-[#1B4D3E]">{quote.booking_ref}</strong></span>
+              <span>|</span>
+              <span>Departure: <strong className="text-[#1B4D3E]">{travelStart}</strong></span>
+            </div>
           </div>
+          <button onClick={handleLogout} className="text-xs tracking-widest uppercase text-gray-500 hover:text-red-600 flex items-center gap-2 mt-2">
+            <LogOut size={16} /> Sign Out
+          </button>
         </div>
 
         {/* STATUS TRACKER */}
@@ -172,7 +225,7 @@ function HubContent() {
               <div className="flex items-center gap-4">
                 <Info className="text-[#C9A961]" size={24} />
                 <div>
-                  <h3 className="font-medium text-[#1B4D3E]">Welcome to Mauritius</h3>
+                  <h3 className="font-medium text-[#1B4D3E]">Destination Guide</h3>
                   <p className="text-xs text-gray-500">Emergency contacts, SIM advice, and local tips</p>
                 </div>
               </div>
@@ -242,6 +295,52 @@ function HubContent() {
           </div>
         </div>
 
+        {/* --- NEW: ACTIVE REQUESTS WIDGET --- */}
+        {conciergeRequests.length > 0 && (
+          <div className="bg-white shadow-sm border border-[#E5DFD3] mb-8">
+            <div className="p-6 border-b border-[#E5DFD3] bg-[#FAF7F0] flex justify-between items-end">
+              <h2 className="font-serif text-2xl text-[#1B4D3E]">Your Requests & Upgrades</h2>
+            </div>
+            <div className="divide-y divide-[#E5DFD3]">
+              {conciergeRequests.map((req) => (
+                <div key={req.id} className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <div className="text-xs tracking-widest uppercase text-[#3D8B8B] mb-1">
+                      {req.category || req.request_type}
+                    </div>
+                    <p className="text-sm text-[#1B4D3E] mb-2">{req.request_details}</p>
+                    {req.status === 'quoted' && (
+                      <div className="bg-[#FAF7F0] p-3 border border-[#C9A961] inline-block">
+                        <p className="text-sm font-medium text-[#1B4D3E]">
+                          Quote: <strong>Rs {req.quoted_price?.toLocaleString()}</strong>
+                        </p>
+                        {req.admin_response && <p className="text-xs text-gray-500">{req.admin_response}</p>}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-1 ${
+                      req.status === 'pending' ? 'bg-orange-100 text-orange-700' :
+                      req.status === 'quoted' ? 'bg-[#C9A961]/20 text-[#1B4D3E]' :
+                      req.status === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {req.status}
+                    </span>
+                    {req.status === 'quoted' && (
+                      <button
+                        onClick={() => acceptQuote(req.id)}
+                        className="bg-[#1B4D3E] text-white px-4 py-2 text-xs uppercase tracking-widest hover:bg-[#C9A961] hover:text-[#1B4D3E] transition"
+                      >
+                        Accept & Add
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* CONCIERGE REQUEST BUTTON */}
         {isDepositPaid && (
           <div className="mt-8 bg-[#1B4D3E] p-6 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
@@ -273,10 +372,10 @@ function HubContent() {
                 <div>
                   <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Request Type</label>
                   <select value={requestType} onChange={(e) => setRequestType(e.target.value)} className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961]">
-                    <option value="Restaurant Reservation">Restaurant Reservation</option>
-                    <option value="Extra Transfer">Extra Transfer</option>
-                    <option value="Excursion/Tour">Excursion / Tour</option>
-                    <option value="Special Occasion">Special Occasion</option>
+                    <option value="Private Chauffeur">Private Chauffeur</option>
+                    <option value="Excursions & Tours">Excursions / Tours</option>
+                    <option value="Restaurant Reservation">Fine Dining</option>
+                    <option value="Special Event">Special Occasion</option>
                     <option value="Other">Other</option>
                   </select>
                 </div>
@@ -360,7 +459,7 @@ function HubContent() {
 
 export default function PortalHub() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-[#1B4D3E]">Loading...</div>}>
       <HubContent />
     </Suspense>
   )

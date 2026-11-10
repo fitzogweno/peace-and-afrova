@@ -18,33 +18,52 @@ export default function ClientLogin() {
     setLoading(true)
     setError('')
 
-    if (isRegistering) {
-      const { error } = await supabase
-        .from('customers')
-        .update({ password_hash: btoa(password) })
-        .eq('email', email)
-      
-      if (error) {
-        setError("Could not create account. Have you booked with us before?")
-      } else {
-        alert("Account created! Please log in.")
-        setIsRegistering(false)
-      }
-    } else {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('id, full_name, password_hash')
-        .eq('email', email)
-        .single()
+    try {
+      if (isRegistering) {
+        // 1. Create the Secure Auth User
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email,
+          password,
+        })
 
-      if (error || !data || data.password_hash !== btoa(password)) {
-        setError("Invalid email or password.")
+        if (authError) throw authError
+
+        if (authData.user) {
+          // 2. Link the Auth User to the existing Customer Record in your DB
+          const { error: updateError } = await supabase
+            .from('customers')
+            .update({ auth_id: authData.user.id })
+            .eq('email', email)
+
+          // If the customer record doesn't exist (they are brand new),
+          // we create a blank one so they can still log in.
+          if (updateError) {
+            await supabase.from('customers').insert({
+              email: email,
+              auth_id: authData.user.id,
+              full_name: 'Valued Guest'
+            })
+          }
+        }
+        
+        // Send them straight to the dashboard
+        router.push('/portal/dashboard')
+        
       } else {
-        document.cookie = `client_session=${data.id}; path=/`
+        // SECURE LOGIN
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+
+        if (error) throw error
         router.push('/portal/dashboard')
       }
+    } catch (err: any) {
+      setError(err.message || "Invalid email or password.")
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
@@ -76,8 +95,8 @@ export default function ClientLogin() {
         </form>
 
         <div className="mt-8 text-center space-y-4">
-          <button onClick={() => setIsRegistering(!isRegistering)} className="text-xs text-[#3D8B8B] underline block mx-auto">
-            {isRegistering ? 'Already have an account? Sign In' : 'First time here? Create an account after your trip'}
+          <button onClick={() => { setIsRegistering(!isRegistering); setError('') }} className="text-xs text-[#3D8B8B] underline block mx-auto">
+            {isRegistering ? 'Already have an account? Sign In' : 'Need an account? Register here'}
           </button>
           <Link href="/" className="text-xs text-gray-400 hover:text-[#1B4D3E] block">
             &larr; Back to Website

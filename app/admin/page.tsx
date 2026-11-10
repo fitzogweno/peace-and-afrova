@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../utils/supabase'
-import { Mail, Headset, Wallet, AlertCircle, CheckCircle } from 'lucide-react'
+import { Mail, Headset, Wallet, AlertCircle, CheckCircle, FileText } from 'lucide-react'
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -27,8 +27,22 @@ export default function AdminDashboard() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/admin/login'); return }
 
-      const { data: enqData } = await supabase.from('enquiries').select(`*, customers (full_name, email, phone), quotations!left(id)`).is('quotations', null).order('created_at', { ascending: false })
-      if (enqData) setEnquiries(enqData)
+      // Fetch Enquiries + Quote Status
+      const { data: enqData } = await supabase
+        .from('enquiries')
+        .select(`*, customers (full_name, email, phone), quotations!left(id, quote_status)`)
+        .order('created_at', { ascending: false })
+      
+      if (enqData) {
+        // 🧠 SMART FILTER: Keep only enquiries with NO quotes OR DRAFT quotes
+        const filteredEnquiries = enqData.filter((enq: any) => {
+          const q = Array.isArray(enq.quotations) ? enq.quotations[0] : enq.quotations;
+          if (!q) return true; // No quote yet
+          if (q.quote_status === 'Draft') return true; // Auto-draft exists
+          return false; // Quote has been sent/accepted, remove from this list
+        })
+        setEnquiries(filteredEnquiries)
+      }
 
       const { data: bookData } = await supabase.from('bookings').select(`*, quotations ( enquiries ( customers ( full_name, email ) ) )`).order('created_at', { ascending: false })
       if (bookData) setAllBookings(bookData)
@@ -65,7 +79,7 @@ export default function AdminDashboard() {
         </div>
         <div className="bg-white p-6 rounded-lg border border-[#E5DFD3] shadow-sm">
           <div className="text-4xl font-serif text-[#1B4D3E] mb-1">{enquiries.length}</div>
-          <div className="text-xs text-gray-500 uppercase tracking-widest font-bold">Enquiries</div>
+          <div className="text-xs text-gray-500 uppercase tracking-widest font-bold">New Enquiries</div>
         </div>
         <div className="bg-white p-6 rounded-lg border border-[#E5DFD3] shadow-sm">
           <div className="text-4xl font-serif text-[#C9A961] mb-1">{pendingBookings.length}</div>
@@ -122,31 +136,42 @@ export default function AdminDashboard() {
       {/* RECENT ACTIVITY */}
       <div className="bg-white rounded-lg border border-[#E5DFD3] shadow-sm overflow-hidden">
         <div className="p-4 border-b border-[#E5DFD3] bg-[#FAF7F0] flex justify-between items-center">
-          <h2 className="font-bold text-[#1B4D3E]">Recent activity</h2>
-          <Link href="/admin/bookings" className="text-xs text-[#3D8B8B] hover:text-[#1B4D3E] font-medium underline">View All</Link>
+          <h2 className="font-bold text-[#1B4D3E]">Recent Enquiries</h2>
+          <Link href="/admin/bookings" className="text-xs text-[#3D8B8B] hover:text-[#1B4D3E] font-medium underline">View All Bookings</Link>
         </div>
         <div className="divide-y divide-[#E5DFD3]">
           {loading ? (
             <div className="p-6 text-center text-gray-500 text-sm">Loading activity...</div>
           ) : enquiries.length === 0 ? (
-            <div className="p-6 text-center text-gray-500 text-sm">No recent activity.</div>
+            <div className="p-6 text-center text-gray-500 text-sm">No new enquiries.</div>
           ) : (
-            enquiries.slice(0, 5).map((enq) => (
-              <div key={enq.id} className="p-4 flex items-center justify-between hover:bg-[#FAF7F0] transition">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#FAF7F0] border border-[#E5DFD3] flex items-center justify-center">
-                    <Mail size={14} className="text-[#C9A961]" />
+            enquiries.slice(0, 5).map((enq) => {
+              // Check if this enquiry has a draft quote attached
+              const hasDraft = enq.quotations && enq.quotations.length > 0;
+
+              return (
+                <div key={enq.id} className="p-4 flex items-center justify-between hover:bg-[#FAF7F0] transition">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full border flex items-center justify-center ${hasDraft ? 'bg-[#C9A961]/10 border-[#C9A961]' : 'bg-[#FAF7F0] border-[#E5DFD3]'}`}>
+                      {hasDraft ? <FileText size={14} className="text-[#C9A961]" /> : <Mail size={14} className="text-gray-400" />}
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-[#1B4D3E] flex items-center gap-2">
+                        {enq.customers?.full_name}
+                        {hasDraft && <span className="text-[9px] bg-[#FAF7F0] text-[#C9A961] border border-[#E5DFD3] px-1.5 py-0.5 rounded-sm uppercase tracking-wider">Draft Auto-Generated</span>}
+                      </div>
+                      <div className="text-xs text-gray-500">{enq.customers?.email} · {new Date(enq.created_at).toLocaleDateString()}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-sm font-medium text-[#1B4D3E]">Guest enquiry received</div>
-                    <div className="text-xs text-gray-500">{enq.customers?.full_name} · {new Date(enq.created_at).toLocaleDateString()}</div>
-                  </div>
+                  <Link 
+                    href={`/admin/quote?id=${enq.id}`} 
+                    className={`text-xs font-bold uppercase tracking-widest px-4 py-2 transition ${hasDraft ? 'bg-[#C9A961] text-[#1B4D3E] hover:bg-[#1B4D3E] hover:text-white' : 'text-[#3D8B8B] hover:text-[#1B4D3E]'}`}
+                  >
+                    {hasDraft ? 'Review Draft Quote' : 'Create Quote'}
+                  </Link>
                 </div>
-                <Link href={`/admin/quote?id=${enq.id}`} className="text-xs font-bold text-[#3D8B8B] uppercase tracking-widest hover:text-[#1B4D3E]">
-                  Quote
-                </Link>
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       </div>

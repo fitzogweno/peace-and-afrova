@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ArrowRight, CheckCircle, Accessibility } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCircle, Accessibility, Sparkles } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
 function BespokeForm() {
@@ -20,6 +20,23 @@ function BespokeForm() {
 
   const hotelRanges = [10000, 20000, 40000, 75000]
   const totalRanges = [150000, 250000, 500000, 1000000]
+
+  // 🧠 BASE ESTIMATOR RATES (in MUR)
+  const estimatorRates = {
+    accommodation: { 
+      '5-Star Resort': 15000, 
+      'Boutique Hotel': 10000, 
+      'Private Villa': 30000, 
+      'Eco-Lodge': 8000 
+    },
+    experiences: { 
+      'Helicopter Tours': 25000, 
+      'Private Experiences': 15000, 
+      'Ocean & Sailing': 10000, 
+      'Wellness & Spa': 8000 
+    },
+    transfers: 5000
+  }
 
   const [formData, setFormData] = useState({
     destinations: [] as string[],
@@ -52,6 +69,22 @@ function BespokeForm() {
     contact_method: 'WhatsApp',
     privacy_consent: false
   })
+
+  // 🧠 SMART PRE-FILL ENGINE
+  useEffect(() => {
+    const destParam = searchParams.get('destination')
+    const typeParam = searchParams.get('journey_type')
+    const durParam = searchParams.get('duration')
+    const styleParam = searchParams.get('style')
+
+    setFormData(prev => ({
+      ...prev,
+      destinations: destParam ? destParam.split(', ') : prev.destinations,
+      journey_type: typeParam || prev.journey_type,
+      duration: durParam ? durParam.replace(/\D/g, '') : prev.duration,
+      accommodation_type: styleParam || prev.accommodation_type,
+    }))
+  }, [searchParams])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
@@ -96,6 +129,20 @@ function BespokeForm() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  // 🧠 LIVE ESTIMATOR LOGIC
+  const estimatedNights = Number(formData.duration) || 7;
+  const baseAccommodation = formData.accommodation_type ? estimatorRates.accommodation[formData.accommodation_type as keyof typeof estimatorRates.accommodation] : 15000;
+  
+  let estimatedExperienceCost = 0;
+  formData.experiences.forEach(exp => {
+    if (estimatorRates.experiences[exp as keyof typeof estimatorRates.experiences]) {
+      estimatedExperienceCost += estimatorRates.experiences[exp as keyof typeof estimatorRates.experiences];
+    }
+  });
+
+  const estimatedTransferCost = formData.needs_transfers ? estimatorRates.transfers : 0;
+  const liveEstimate = (baseAccommodation * estimatedNights) + estimatedExperienceCost + estimatedTransferCost;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!validateStep(5)) return
@@ -111,7 +158,6 @@ function BespokeForm() {
     if (formData.arrival_flight) finalInterests += `FLIGHTS: Arr ${formData.arrival_flight} / Dep ${formData.departure_flight}.\n`
     finalInterests += `ARRANGEMENTS: ${formData.needs_transfers ? 'Needs Transfers. ' : ''}${formData.needs_chauffeur ? 'Needs Chauffeur. ' : ''}\n`
     
-    // INCLUSIVE JOURNEYS DATA MAPPING
     if (formData.accessibility_needs.length > 0 || formData.accessibility_notes) {
       finalInterests += `\n--- INCLUSIVE JOURNEY REQUIREMENTS ---\n`
       if (formData.accessibility_needs.length > 0) finalInterests += `Needs: ${formData.accessibility_needs.join(', ')}\n`
@@ -136,7 +182,13 @@ function BespokeForm() {
       hotel_budget: formData.hotel_budget,
       hotel_location: formData.hotel_location,
       hotel_vibe: formData.accommodation_type, 
-      product_interest: activityParam
+      product_interest: activityParam,
+      
+      // 🧠 YC INNOVATION: Send Draft Data to Backend
+      draft_estimate_mur: liveEstimate,
+      draft_nights: estimatedNights,
+      draft_accommodation: formData.accommodation_type,
+      draft_experiences: formData.experiences
     }
 
     try {
@@ -411,7 +463,6 @@ function BespokeForm() {
                   <input type="text" name="dietary_requirements" value={formData.dietary_requirements} onChange={handleChange} placeholder="e.g. Vegan, Nut allergy, Halal" className="w-full border-b border-[#E5DFD3] bg-transparent py-2 text-sm focus:outline-none focus:border-[#C9A961]" />
                 </div>
 
-                {/* --- NEW: INCLUSIVE JOURNEYS SECTION --- */}
                 <div className="bg-[#FAF7F0] border border-[#C9A961] p-6 mt-8">
                   <h3 className="font-serif text-xl text-[#1B4D3E] mb-2 flex items-center gap-2">
                     <Accessibility size={20} className="text-[#C9A961]" /> Inclusive Travel Requirements
@@ -419,26 +470,14 @@ function BespokeForm() {
                   <p className="text-xs text-[#777777] mb-4">Please help us understand any specific accessibility or support requirements you or your party may have.</p>
                   
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-                    {[
-                      'Mobility / wheelchair access', 'Reduced mobility', 'Visual impairment', 
-                      'Hearing impairment', 'Neurodiversity / sensory', 'Age-related assistance', 
-                      'Travelling with a carer', 'Other requirements'
-                    ].map(need => (
+                    {['Mobility / wheelchair access', 'Reduced mobility', 'Visual impairment', 'Hearing impairment', 'Neurodiversity / sensory', 'Age-related assistance', 'Travelling with a carer', 'Other requirements'].map(need => (
                       <CheckboxCard key={need} label={need} selected={formData.accessibility_needs.includes(need)} onClick={() => handleArrayToggle('accessibility_needs', need)} />
                     ))}
                   </div>
 
                   <div>
                     <label className="block text-[10px] tracking-widest uppercase text-[#1B4D3E] mb-2 font-bold">What would help us make your journey comfortable, enjoyable and stress-free?</label>
-                    <textarea 
-                      name="accessibility_notes" 
-                      value={formData.accessibility_notes} 
-                      onChange={handleChange} 
-                      rows={3} 
-                      placeholder="e.g. We require a roll-in shower and a vehicle with a ramp..." 
-                      className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961] bg-white resize-none"
-                    ></textarea>
-                    <p className="text-[10px] text-gray-400 mt-1 italic">Please do not disclose medical diagnoses. We only need to know the assistance you require.</p>
+                    <textarea name="accessibility_notes" value={formData.accessibility_notes} onChange={handleChange} rows={3} placeholder="e.g. We require a roll-in shower and a vehicle with a ramp..." className="w-full border border-[#E5DFD3] p-3 text-sm focus:outline-none focus:border-[#C9A961] bg-white resize-none"></textarea>
                   </div>
                 </div>
               </div>
@@ -501,6 +540,21 @@ function BespokeForm() {
                       I consent to Peace & Afrova processing my personal information to design and propose my travel itinerary, in accordance with the <Link href="/policies/privacy" className="text-[#1B4D3E] underline">Privacy Policy</Link>.
                     </span>
                   </label>
+                </div>
+
+                {/* 🧠 LIVE ESTIMATOR PANEL */}
+                <div className="bg-[#FAF7F0] border border-[#C9A961] p-6 mt-8 shadow-inner animate-in zoom-in-95 duration-300">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="text-[#C9A961]" size={18} />
+                    <span className="text-xs text-[#1B4D3E] uppercase tracking-widest font-bold">Instant Estimate</span>
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <div className="text-sm text-gray-600 font-light">Based on your selections</div>
+                    <div className="text-3xl font-serif text-[#1B4D3E]">{formatPrice(liveEstimate)}</div>
+                  </div>
+                  <p className="text-[10px] text-gray-500 italic text-right mt-2">
+                    * This is a preliminary estimate. Your Journey Designer will refine this into a final quotation.
+                  </p>
                 </div>
               </div>
             )}
