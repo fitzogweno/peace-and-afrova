@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../utils/supabase'
-import { Printer, MapPin, CheckCircle, Clock, Compass, Phone, Mail, Car, CloudSun, MessageCircle, Lock, ShieldCheck, Sparkles, Utensils, PartyPopper, Send, X, Plus } from 'lucide-react'
+import { Printer, MapPin, CheckCircle, Clock, Compass, Phone, Mail, Car, CloudSun, MessageCircle, Lock, ShieldCheck, Sparkles, Utensils, PartyPopper, Send, X } from 'lucide-react'
 import QRCode from 'react-qr-code'
 
 function ItineraryContent() {
@@ -145,15 +145,30 @@ function ItineraryContent() {
           </div>
         )}
 
-        {/* ... Rest of the Hero Header and Route Map (Kept identical to your existing code) ... */}
+        {/* HEADER WITH CO-BRANDING */}
         <div className="flex flex-col md:flex-row justify-between items-start border-b border-[#E5DFD3] pb-8 mb-8">
           <div>
             <div className="text-xs tracking-[0.3em] uppercase text-[#C9A961] mb-2 font-medium">Peace and Afrova</div>
             <div className="font-serif text-3xl text-[#1B4D3E]">Travel Itinerary</div>
           </div>
-          <div className="text-left md:text-right mt-4 md:mt-0">
-            <div className="text-xs tracking-widest uppercase text-gray-500">Booking Reference</div>
-            <div className="font-medium text-[#1B4D3E] text-xl">{booking.booking_ref}</div>
+          
+          {/* CLIENT CO-BRANDING IN PRINT */}
+          <div className="text-left md:text-right mt-4 md:mt-0 flex flex-col md:items-end">
+            {booking.client_logo_url && booking.branding_status === 'approved' ? (
+              <>
+                <div className="text-xs tracking-widest uppercase text-gray-500 mb-1">Prepared Exclusively For</div>
+                {/* Using standard img tag to ensure it renders perfectly on PDF print exports */}
+                <img src={booking.client_logo_url} alt="Client Logo" className="h-10 w-auto object-contain mb-2 print:max-h-12" />
+                {booking.client_brand_name && (
+                  <div className="font-medium text-[#1B4D3E] text-sm">{booking.client_brand_name}</div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="text-xs tracking-widest uppercase text-gray-500">Booking Reference</div>
+                <div className="font-medium text-[#1B4D3E] text-xl">{booking.booking_ref}</div>
+              </>
+            )}
           </div>
         </div>
 
@@ -260,7 +275,7 @@ function ItineraryContent() {
           })}
         </div>
 
-        {/* --- NEW: ENHANCE YOUR JOURNEY (UPSELL WIDGET) --- */}
+        {/* --- ENHANCE YOUR JOURNEY (UPSELL WIDGET) --- */}
         <div className="mt-16 bg-[#FAF7F0] border border-[#C9A961] p-8 print:hidden shadow-sm">
           <div className="text-center mb-8">
             <div className="flex justify-center mb-2">

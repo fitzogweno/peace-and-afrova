@@ -303,11 +303,16 @@ export default function Home() {
             </div>
           </div>
           
-          <div className="border-t border-white/10 pt-8 text-xs text-white/40 flex flex-col md:flex-row justify-between gap-4">
+          <div className="border-t border-white/10 pt-8 text-[10px] text-white/40 flex flex-col md:flex-row justify-between items-center gap-4">
             <div>© 2026 Peace and Afrova Group Company Ltd.</div>
-            <div className="flex gap-4">
-              <Link href="/policies/terms" className="hover:text-white transition">Terms</Link>
-              <Link href="/policies/privacy" className="hover:text-white transition">Privacy</Link>
+            
+            {/* UPDATED LEGAL LINKS WITH DIVIDERS AND HOVER EFFECT */}
+            <div className="flex items-center gap-4 tracking-[0.2em] uppercase font-bold">
+              <Link href="/policies/terms" className="hover:text-[#C9A961] transition">Terms</Link>
+              <span className="text-white/20">|</span>
+              <Link href="/policies/privacy" className="hover:text-[#C9A961] transition">Privacy</Link>
+              <span className="text-white/20">|</span>
+              <Link href="/policies/legal" className="hover:text-[#C9A961] transition">Legal Notice</Link>
             </div>
           </div>
         </div>

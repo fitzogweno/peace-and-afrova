@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Shield, Wifi, Map } from 'lucide-react'
+import { ArrowLeft, Shield, Wifi, Map, CheckCircle } from 'lucide-react'
 import { supabase } from '../../utils/supabase'
 
 function WelcomeContent() {
@@ -12,6 +12,7 @@ function WelcomeContent() {
   const quoteRef = searchParams.get('ref') || ''
   
   const [destination, setDestination] = useState('Mauritius')
+  const [booking, setBooking] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -25,18 +26,26 @@ function WelcomeContent() {
 
       if (!quoteRef) { setLoading(false); return }
 
-      // 2. Fetch the destination dynamically from the quote/enquiry
+      // 2. Fetch the destination and the booking (for branding)
       const { data } = await supabase
         .from('quotations')
-        .select('enquiries (destination)')
+        .select(`
+          enquiries (destination), 
+          bookings ( client_logo_url, client_brand_name, client_welcome_message, branding_status )
+        `)
         .eq('booking_ref', quoteRef)
         .single()
       
       if (data) {
         const enq = Array.isArray(data.enquiries) ? data.enquiries[0] : data.enquiries
         if (enq?.destination) {
-          // Grab the first destination if they have multiple listed (e.g. "Mauritius, Seychelles" -> "Mauritius")
+          // Grab the first destination if they have multiple listed
           setDestination(enq.destination.split(',')[0].trim()) 
+        }
+
+        const bkg = Array.isArray(data.bookings) ? data.bookings[0] : data.bookings
+        if (bkg) {
+          setBooking(bkg)
         }
       }
       setLoading(false)
@@ -48,17 +57,36 @@ function WelcomeContent() {
     return <div className="min-h-screen flex items-center justify-center text-[#1B4D3E] animate-pulse">Loading your guide...</div>
   }
 
+  // Determine if we should show custom branding
+  const hasBranding = booking?.branding_status === 'approved' && booking?.client_logo_url
+  const customWelcome = booking?.branding_status === 'approved' && booking?.client_welcome_message
+
   return (
     <div className="min-h-screen bg-[#F5F0E6] py-12 px-6 font-sans text-[#1A1A1A]">
       <div className="max-w-3xl mx-auto">
         
-        <Link href={`/portal/hub?ref=${quoteRef}`} className="inline-flex items-center gap-2 text-xs tracking-[0.2em] uppercase text-[#3D8B8B] hover:text-[#1B4D3E] transition mb-8">
-          <ArrowLeft size={16} /> Back to Portal
-        </Link>
+        <div className="flex justify-between items-center mb-8">
+          <Link href={`/portal/hub?ref=${quoteRef}`} className="inline-flex items-center gap-2 text-xs tracking-[0.2em] uppercase text-[#3D8B8B] hover:text-[#1B4D3E] transition">
+            <ArrowLeft size={16} /> Back to Portal
+          </Link>
+
+          {/* CO-BRANDING BADGE (Top Right) */}
+          {hasBranding && (
+            <div className="flex items-center gap-2 animate-in fade-in">
+              <span className="text-[10px] tracking-widest uppercase text-gray-400 hidden md:block">Prepared for</span>
+              <img src={booking.client_logo_url} alt="Client Logo" className="h-6 w-auto object-contain" />
+            </div>
+          )}
+        </div>
 
         <div className="text-center mb-12">
           <div className="text-xs tracking-[0.3em] uppercase text-[#C9A961] mb-2 font-medium">Peace and Afrova</div>
-          <h1 className="font-serif text-4xl md:text-5xl text-[#1B4D3E] mb-4">Welcome to {destination}</h1>
+          
+          {/* CUSTOM WELCOME MESSAGE OR DEFAULT */}
+          <h1 className="font-serif text-4xl md:text-5xl text-[#1B4D3E] mb-4 leading-tight">
+            {customWelcome ? booking.client_welcome_message : `Welcome to ${destination}`}
+          </h1>
+
           <div className="w-16 h-px bg-[#C9A961] mx-auto mb-6" />
           <p className="text-lg text-gray-600 font-light">
             Your journey begins here. We have prepared everything you need for a seamless arrival.
@@ -80,7 +108,7 @@ function WelcomeContent() {
               <div className="bg-[#FAF7F0] p-4 border border-[#E5DFD3]">
                 <p className="font-medium text-[#1B4D3E]">Your Dedicated Concierge</p>
                 <p className="text-lg font-serif text-[#3D8B8B]">+230 5740 0125</p>
-                <a href="https://wa.me/23057400125" target="_blank" rel="noopener noreferrer" className="text-xs text-green-600 underline mt-1 inline-block">Chat on WhatsApp</a>
+                <a href="https://wa.me/23057400125" target="_blank" rel="noopener noreferrer" className="text-xs text-green-600 underline mt-1 inline-block hover:text-green-700">Chat on WhatsApp</a>
               </div>
             </div>
           </div>
@@ -111,6 +139,16 @@ function WelcomeContent() {
           </div>
 
         </div>
+
+        {/* FOOTER WATERMARK FOR PRINTING */}
+        {hasBranding && (
+          <div className="mt-12 text-center flex flex-col items-center justify-center opacity-60">
+            <span className="text-[10px] tracking-widest uppercase text-gray-400 mb-2">This guide was prepared exclusively for</span>
+            <img src={booking.client_logo_url} alt="Client Logo" className="h-8 w-auto object-contain mb-2 grayscale" />
+            <span className="text-xs font-medium text-[#1B4D3E]">{booking.client_brand_name}</span>
+          </div>
+        )}
+
       </div>
     </div>
   )
