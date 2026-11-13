@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../utils/supabase'
-import { Mail, Headset, Wallet, AlertCircle, CheckCircle, FileText } from 'lucide-react'
+import { Mail, Headset, Wallet, AlertCircle, CheckCircle, FileText, Palette, Sparkles } from 'lucide-react'
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -13,6 +13,8 @@ export default function AdminDashboard() {
   const [allBookings, setAllBookings] = useState<any[]>([])
   const [pendingBookings, setPendingBookings] = useState<any[]>([])
   const [conciergeRequests, setConciergeRequests] = useState<any[]>([])
+  const [upsellRequests, setUpsellRequests] = useState<any[]>([])
+  const [pendingBranding, setPendingBranding] = useState<any[]>([])
   const [disruptions, setDisruptions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [greeting, setGreeting] = useState('Welcome')
@@ -34,12 +36,11 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false })
       
       if (enqData) {
-        // 🧠 SMART FILTER: Keep only enquiries with NO quotes OR DRAFT quotes
         const filteredEnquiries = enqData.filter((enq: any) => {
           const q = Array.isArray(enq.quotations) ? enq.quotations[0] : enq.quotations;
-          if (!q) return true; // No quote yet
-          if (q.quote_status === 'Draft') return true; // Auto-draft exists
-          return false; // Quote has been sent/accepted, remove from this list
+          if (!q) return true; 
+          if (q.quote_status === 'Draft') return true;
+          return false; 
         })
         setEnquiries(filteredEnquiries)
       }
@@ -50,8 +51,16 @@ export default function AdminDashboard() {
       const { data: pendingData } = await supabase.from('bookings').select(`*, payments ( id, amount )`).eq('payment_status', 'Pending')
       if (pendingData) setPendingBookings(pendingData)
 
-      const { data: conciergeData } = await supabase.from('concierge_requests').select('*').eq('status', 'Pending').order('created_at', { ascending: false })
+      const { data: conciergeData } = await supabase.from('concierge_requests').select('*').eq('status', 'pending').eq('is_upsell', false).order('created_at', { ascending: false })
       if (conciergeData) setConciergeRequests(conciergeData)
+
+      // NEW: Fetch Upsell Requests
+      const { data: upsellData } = await supabase.from('concierge_requests').select('*').eq('status', 'pending').eq('is_upsell', true).order('created_at', { ascending: false })
+      if (upsellData) setUpsellRequests(upsellData)
+
+      // NEW: Fetch Branding Approvals
+      const { data: brandingData } = await supabase.from('bookings').select('id, booking_ref').eq('branding_status', 'pending_approval')
+      if (brandingData) setPendingBranding(brandingData)
 
       const { data: disruptionData } = await supabase.from('supplier_bookings').select(`id, service_description, driver_name, original_pickup_time, pickup_time, delay_minutes, disruption_status, quotations ( bookings ( customer_name ) )`).in('disruption_status', ['Notified', 'Acknowledged'])
       if (disruptionData) setDisruptions(disruptionData)
@@ -61,7 +70,7 @@ export default function AdminDashboard() {
     initDashboard()
   }, [router])
 
-  const totalAlerts = disruptions.length + pendingBookings.length + conciergeRequests.length
+  const totalAlerts = disruptions.length + pendingBookings.length + conciergeRequests.length + upsellRequests.length + pendingBranding.length
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -86,8 +95,8 @@ export default function AdminDashboard() {
           <div className="text-xs text-gray-500 uppercase tracking-widest font-bold">Payments</div>
         </div>
         <div className="bg-white p-6 rounded-lg border border-[#E5DFD3] shadow-sm">
-          <div className="text-4xl font-serif text-[#1B4D3E] mb-1">{conciergeRequests.length + disruptions.length}</div>
-          <div className="text-xs text-gray-500 uppercase tracking-widest font-bold">Requests</div>
+          <div className="text-4xl font-serif text-[#1B4D3E] mb-1">{conciergeRequests.length + upsellRequests.length + disruptions.length + pendingBranding.length}</div>
+          <div className="text-xs text-gray-500 uppercase tracking-widest font-bold">Operations Tasks</div>
         </div>
       </div>
 
@@ -106,6 +115,27 @@ export default function AdminDashboard() {
               <span className="text-xs font-bold text-red-600 uppercase">Review</span>
             </Link>
           )}
+          
+          {pendingBranding.length > 0 && (
+            <Link href="/admin/branding" className="flex items-center justify-between p-3 bg-[#C9A961]/10 border border-[#C9A961]/30 rounded-md hover:bg-[#C9A961]/20 transition">
+              <div className="flex items-center gap-3">
+                <Palette size={18} className="text-[#1B4D3E]" />
+                <span className="text-sm font-medium text-[#1B4D3E]">Branding: {pendingBranding.length} logo(s) awaiting approval</span>
+              </div>
+              <span className="text-xs font-bold text-[#1B4D3E] uppercase">Review</span>
+            </Link>
+          )}
+
+          {upsellRequests.length > 0 && (
+            <Link href="/admin/requests" className="flex items-center justify-between p-3 bg-[#1B4D3E]/5 border border-[#1B4D3E]/10 rounded-md hover:bg-[#1B4D3E]/10 transition">
+              <div className="flex items-center gap-3">
+                <Sparkles size={18} className="text-[#1B4D3E]" />
+                <span className="text-sm font-medium text-[#1B4D3E]">Upsells: {upsellRequests.length} upgrade request(s) to quote</span>
+              </div>
+              <span className="text-xs font-bold text-[#1B4D3E] uppercase">Review</span>
+            </Link>
+          )}
+
           {pendingBookings.length > 0 && (
             <Link href="/admin" className="flex items-center justify-between p-3 bg-orange-50 border border-orange-100 rounded-md hover:bg-orange-100 transition">
               <div className="flex items-center gap-3">
@@ -115,15 +145,17 @@ export default function AdminDashboard() {
               <span className="text-xs font-bold text-orange-600 uppercase">Review</span>
             </Link>
           )}
+
           {conciergeRequests.length > 0 && (
-            <Link href="/admin" className="flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-md hover:bg-blue-100 transition">
+            <Link href="/admin/requests" className="flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-md hover:bg-blue-100 transition">
               <div className="flex items-center gap-3">
                 <Headset size={18} className="text-blue-600" />
-                <span className="text-sm font-medium text-blue-800">Concierge: {conciergeRequests.length} new request(s)</span>
+                <span className="text-sm font-medium text-blue-800">Concierge: {conciergeRequests.length} general request(s)</span>
               </div>
               <span className="text-xs font-bold text-blue-600 uppercase">Review</span>
             </Link>
           )}
+          
           {totalAlerts === 0 && (
             <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-100 rounded-md">
               <CheckCircle size={18} className="text-green-600" />
@@ -146,7 +178,6 @@ export default function AdminDashboard() {
             <div className="p-6 text-center text-gray-500 text-sm">No new enquiries.</div>
           ) : (
             enquiries.slice(0, 5).map((enq) => {
-              // Check if this enquiry has a draft quote attached
               const hasDraft = enq.quotations && enq.quotations.length > 0;
 
               return (
