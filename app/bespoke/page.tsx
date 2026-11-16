@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, ArrowRight, CheckCircle, Accessibility, Sparkles } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import { takeTurnstileToken } from '../../lib/turnstile-client'
 
 function BespokeForm() {
   const router = useRouter()
@@ -195,7 +196,7 @@ function BespokeForm() {
       const res = await fetch('/api/enquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, turnstileToken: takeTurnstileToken() }),
       })
 
       const responseData = await res.json()

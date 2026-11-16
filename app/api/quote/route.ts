@@ -1,13 +1,25 @@
+import { makeRef } from '../../../lib/refs'
+import { requireAdmin } from '../../../lib/auth-admin'
+import { supabaseAdmin } from '../../../lib/supabase-admin'
+import { esc } from '../../../lib/html'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req: Request) {
+  const auth = await requireAdmin(req)
+  if (!auth.ok) return auth.response
+
   try {
     const body = await req.json()
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    const supabase = supabaseAdmin()
 
-    const randomNum = Math.floor(1000 + Math.random() * 9000)
-    const ref = `PA-${new Date().getFullYear()}-${randomNum}`
+    if (!Array.isArray(body.items) || body.items.length === 0) {
+      return NextResponse.json({ error: 'A quote needs at least one line item' }, { status: 400 })
+    }
+    const sub = Number(body.subtotal), vat = Number(body.vat), total = Number(body.total)
+    if (![sub, vat, total].every(Number.isFinite) || sub < 0 || Math.abs(sub + vat - total) > 0.05) {
+      return NextResponse.json({ error: 'Totals do not add up (subtotal + VAT must equal total)' }, { status: 400 })
+    }
+    const ref = makeRef('PA')
 
     // 1. Save the main Quotation (with the chosen currency and locked FX rate)
     const { data: quotation, error: quoteError } = await supabase

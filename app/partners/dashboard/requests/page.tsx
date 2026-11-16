@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../utils/supabase'
 import { LayoutDashboard, Bell, Calendar, FileText, Send, Settings, LogOut, Building2, MapPin, Users } from 'lucide-react'
+import { adminFetch } from '../../../../lib/admin-fetch'
 
 export default function PartnerRequests() {
   const router = useRouter()
@@ -12,6 +13,12 @@ export default function PartnerRequests() {
   const [partner, setPartner] = useState<any>(null)
   const [requests, setRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [quotingId, setQuotingId] = useState<string | null>(null)
+  const [amount, setAmount] = useState('')
+  const [currency, setCurrency] = useState('MUR')
+  const [inclusions, setInclusions] = useState('')
+  const [validUntil, setValidUntil] = useState('')
+  const [sending, setSending] = useState(false)
 
   useEffect(() => {
     async function initPage() {
@@ -26,7 +33,7 @@ export default function PartnerRequests() {
         // Fetch their specific requests
         const { data: reqData } = await supabase
           .from('service_requests')
-          .select('*')
+          .select('*, partner_quotations(*)')
           .eq('partner_id', partnerData.id)
           .order('created_at', { ascending: false })
         
@@ -36,6 +43,22 @@ export default function PartnerRequests() {
     }
     initPage()
   }, [router])
+
+  async function submitQuote(requestId: string) {
+    setSending(true)
+    const res = await adminFetch('/api/partner/quote', {
+      method: 'POST',
+      body: JSON.stringify({ requestId, netAmount: Number(amount), currency, inclusions, validUntil: validUntil || undefined }),
+    })
+    if (res.ok) {
+      alert('Your quotation has been sent. You will be told if it is accepted.')
+      window.location.reload()
+    } else {
+      const { error } = await res.json().catch(() => ({ error: 'Could not send your quotation' }))
+      alert(error)
+    }
+    setSending(false)
+  }
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -87,10 +110,50 @@ export default function PartnerRequests() {
                       <span className="flex items-center gap-1"><Users size={14} className="text-[#C9A961]"/> {req.party_size} Pax</span>
                     </div>
                   </div>
-                  <button className="bg-[#1B4D3E] text-white px-6 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#C9A961] transition">
-                    Submit Quotation
-                  </button>
+                  {['pending', 'quoted'].includes(req.status) && (
+                    <button onClick={() => {
+                      const q = req.partner_quotations?.[0]
+                      setQuotingId(quotingId === req.id ? null : req.id)
+                      setAmount(q ? String(q.net_amount) : ''); setCurrency(q?.currency || 'MUR'); setInclusions(q?.inclusions || ''); setValidUntil(q?.valid_until || '')
+                    }} className="bg-[#1B4D3E] text-white px-6 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#C9A961] transition">
+                      {req.partner_quotations?.length ? 'Revise Quotation' : 'Submit Quotation'}
+                    </button>
+                  )}
                 </div>
+                {req.partner_quotations?.[0] && (
+                  <div className="mb-4 text-sm text-[#1B4D3E] bg-green-50 border border-green-200 p-3">
+                    Your quotation: <strong>{req.partner_quotations[0].currency} {Number(req.partner_quotations[0].net_amount).toLocaleString()}</strong>
+                    {req.partner_quotations[0].status === 'accepted' && ' (accepted)'}
+                    {req.partner_quotations[0].status === 'declined' && ' (not selected this time)'}
+                  </div>
+                )}
+                {quotingId === req.id && (
+                  <div className="mb-4 bg-white border border-[#C9A961] p-4 space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="col-span-2">
+                        <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Net price (total) *</label>
+                        <input type="number" min="1" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full border border-[#E5DFD3] p-2 text-sm focus:outline-none focus:border-[#C9A961]" />
+                      </div>
+                      <div>
+                        <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Currency</label>
+                        <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full border border-[#E5DFD3] p-2 text-sm focus:outline-none focus:border-[#C9A961]">
+                          <option>MUR</option><option>EUR</option><option>USD</option><option>GBP</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">What is included</label>
+                      <textarea rows={3} value={inclusions} onChange={(e) => setInclusions(e.target.value)} className="w-full border border-[#E5DFD3] p-2 text-sm focus:outline-none focus:border-[#C9A961]" />
+                    </div>
+                    <div>
+                      <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Price valid until (optional)</label>
+                      <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="border border-[#E5DFD3] p-2 text-sm focus:outline-none focus:border-[#C9A961]" />
+                    </div>
+                    <button disabled={sending || !amount} onClick={() => submitQuote(req.id)} className="bg-[#1B4D3E] text-white px-6 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#C9A961] transition disabled:opacity-50">
+                      {sending ? 'Sending...' : 'Send Quotation'}
+                    </button>
+                  </div>
+                )}
                 <div className="bg-[#FAF7F0] p-4 border border-[#E5DFD3] text-sm text-gray-700">
                   <strong>Client Requirements:</strong><br/>
                   {req.details}

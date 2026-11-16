@@ -1,11 +1,20 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { supabaseAdmin } from '../../../lib/supabase-admin'
+import { esc } from '../../../lib/html'
+import { makeRef } from '../../../lib/refs'
+import { rateLimit, clientIp } from '../../../lib/rate-limit'
+import { verifyTurnstile } from '../../../lib/turnstile'
 
 export async function POST(req: Request) {
+  const limited = await rateLimit(req, 'partner-apply', 3, 3600)
+  if (limited) return limited
   try {
     const data = await req.json()
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    if (!(await verifyTurnstile(data.turnstileToken, clientIp(req)))) {
+      return NextResponse.json({ error: 'Verification failed. Please refresh the page and try again.' }, { status: 400 })
+    }
+    const supabase = supabaseAdmin()
     const resend = new Resend(process.env.RESEND_API_KEY)
 
     // 1. Server-Side Validation
@@ -28,14 +37,18 @@ export async function POST(req: Request) {
     }
 
     // 3. Generate Application Reference (e.g., PA-PART-1234)
-    const randomNum = Math.floor(1000 + Math.random() * 9000)
-    const applicationRef = `PA-PART-${randomNum}`
+    const applicationRef = makeRef('PA-PART')
 
     // 4. Insert into Database
     const { error: insertError } = await supabase
       .from('partner_applications')
       .insert({
-        ...data,
+        ...Object.fromEntries(
+          ['company_name', 'partner_type', 'country', 'website', 'contact_name', 'email', 'country_code', 'phone',
+           'destinations', 'services', 'years_in_operation', 'capacity', 'languages', 'introduction', 'agree_terms']
+            .filter((k) => k in data)
+            .map((k) => [k, data[k]])
+        ), // explicit whitelist: callers can no longer write arbitrary columns
         application_reference: applicationRef,
         status: 'pending_review'
       })
@@ -50,10 +63,10 @@ export async function POST(req: Request) {
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h2 style="color: #1B4D3E;">New Partner Application</h2>
-          <p><strong>Company:</strong> ${data.company_name}</p>
-          <p><strong>Type:</strong> ${data.partner_type}</p>
-          <p><strong>Contact:</strong> ${data.contact_name} (${data.email})</p>
-          <p><strong>Reference:</strong> ${applicationRef}</p>
+          <p><strong>Company:</strong> ${esc(data.company_name)}</p>
+          <p><strong>Type:</strong> ${esc(data.partner_type)}</p>
+          <p><strong>Contact:</strong> ${esc(data.contact_name)} (${esc(data.email)})</p>
+          <p><strong>Reference:</strong> ${esc(applicationRef)}</p>
           <a href="https://peaceandafrova.com/admin/partners" style="display: inline-block; background-color: #1B4D3E; color: white; padding: 10px 20px; text-decoration: none; margin-top: 20px;">Review in Dashboard</a>
         </div>
       `
@@ -62,6 +75,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, application_reference: applicationRef })
   } catch (error: any) {
     console.error("PARTNER APPLY ERROR:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Could not submit your application. Please try again.' }, { status: 500 })
   }
 }

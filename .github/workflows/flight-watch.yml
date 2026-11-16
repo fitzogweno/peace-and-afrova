@@ -1,0 +1,16 @@
+# Free scheduler for the flight watcher (Vercel Hobby crons can only run once a day).
+# Repository secrets needed: SITE_URL (for example https://peaceandafrova.com) and CRON_SECRET (same value as in Vercel).
+name: flight-watch
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {}
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call flight watch
+        run: |
+          curl --fail --silent --show-error --max-time 60 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.SITE_URL }}/api/cron/flight-watch"

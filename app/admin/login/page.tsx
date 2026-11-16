@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../../utils/supabase'
+import { adminFetch } from '../../../lib/admin-fetch'
 
 export default function AdminLogin() {
   const router = useRouter()
@@ -24,24 +25,22 @@ export default function AdminLogin() {
     setError('')
 
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         setError(error.message)
         setLoading(false)
-      } else {
-        // Save a cookie so the dashboard knows you are logged in
-        document.cookie = "admin_session=true; path=/"
-        router.push('/admin')
+        return
       }
+
+      // Being a Supabase user is not enough (clients are users too): the server checks the admin allow-list.
+      const check = await adminFetch('/api/admin/session')
+      if (!check.ok) {
+        await supabase.auth.signOut()
+        setError('This account does not have admin access.')
+        setLoading(false)
+        return
+      }
+      router.push('/admin')
     } catch (err: any) {
       setError("An unexpected error occurred. Check your console.")
       setLoading(false)

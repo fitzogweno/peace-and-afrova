@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
 import { Clock, CheckCircle, FileText, Send, Navigation, RefreshCw, PlaneTakeoff, AlertCircle, UserCheck } from 'lucide-react'
+import { adminFetch } from '../../../lib/admin-fetch'
+import { LATE_GRACE_MINUTES } from '../../../lib/pricing'
 
 export default function BookingsOperations() {
   const router = useRouter()
@@ -42,7 +44,7 @@ export default function BookingsOperations() {
 
       const { data: allJobs } = await supabase
         .from('supplier_bookings')
-        .select('driver_name, job_status, delay_minutes')
+        .select('driver_name, job_status, driver_minutes_late')
         .not('driver_name', 'is', null)
 
       if (allJobs) {
@@ -50,7 +52,7 @@ export default function BookingsOperations() {
           const name = job.driver_name
           if (!acc[name]) acc[name] = { total: 0, late: 0 }
           acc[name].total += 1
-          if (job.delay_minutes > 0) acc[name].late += 1
+          if (job.driver_minutes_late > LATE_GRACE_MINUTES) acc[name].late += 1
           return acc
         }, {})
         setDriverStats(stats)
@@ -93,7 +95,7 @@ export default function BookingsOperations() {
 
     const enquiry = getEnquiryData(booking);
     
-    const res = await fetch('/api/supplier-booking', {
+    const res = await adminFetch('/api/supplier-booking', {
       method: 'POST',
       body: JSON.stringify({ 
         quotationId: booking.quotation_id, serviceDescription: item.description, confirmationNumber: confNumber,
@@ -115,7 +117,7 @@ export default function BookingsOperations() {
     if (!flightNumber) return alert("No arrival flight number provided.")
     setTrackingBookingRef(bookingRef)
     try {
-      const res = await fetch('/api/track-flight', {
+      const res = await adminFetch('/api/track-flight', {
         method: 'POST',
         body: JSON.stringify({ flightNumber, bookingRef })
       })
@@ -137,7 +139,7 @@ export default function BookingsOperations() {
     if (!flightNumber) return alert("No departure flight number provided.")
     setCalculatingDeparture(bookingRef)
     try {
-      const res = await fetch('/api/calculate-departure', {
+      const res = await adminFetch('/api/calculate-departure', {
         method: 'POST',
         body: JSON.stringify({ flightNumber, bookingRef })
       })
@@ -159,7 +161,7 @@ export default function BookingsOperations() {
     const enquiry = getEnquiryData(booking);
     if (!enquiry?.customers?.email) return alert("No email found for this client.")
     if (!confirm(`Send Portal Invite email to ${booking.customer_name}?`)) return
-    const res = await fetch('/api/send-invite', {
+    const res = await adminFetch('/api/send-invite', {
       method: 'POST',
       body: JSON.stringify({ clientEmail: enquiry.customers.email, clientName: booking.customer_name })
     })
@@ -171,7 +173,7 @@ export default function BookingsOperations() {
     if (!confirm(`Are you sure you want to ${action} this request?`)) return
     setProcessingOfferId(quoteId)
     try {
-      const res = await fetch('/api/process-counter-offer', {
+      const res = await adminFetch('/api/process-counter-offer', {
         method: 'POST',
         body: JSON.stringify({ quoteId, action, newTotal })
       })

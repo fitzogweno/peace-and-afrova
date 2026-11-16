@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit, clientIp } from '../../../lib/rate-limit'
 
 // Use the service role key for server-side actions
 const supabaseAdmin = createClient(
@@ -8,6 +9,8 @@ const supabaseAdmin = createClient(
 )
 
 export async function POST(req: Request) {
+  const limited = await rateLimit(req, 'careers', 3, 3600)
+  if (limited) return limited
   try {
     // 1. Parse multipart/form-data (to handle the file)
     const formData = await req.formData()
@@ -50,7 +53,15 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'CV file is too large (max 5MB).' }, { status: 400 })
       }
 
-      const fileExt = cvFile.name.split('.').pop()
+      const fileExt = (cvFile.name.split('.').pop() || '').toLowerCase()
+      const allowed: Record<string, string> = {
+        pdf: 'application/pdf',
+        doc: 'application/msword',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      }
+      if (!allowed[fileExt]) {
+        return NextResponse.json({ error: 'CV must be a PDF or Word document.' }, { status: 400 })
+      }
       const fileName = `${job_id}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
       const arrayBuffer = await cvFile.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
@@ -58,7 +69,7 @@ export async function POST(req: Request) {
       const { error: uploadError } = await supabaseAdmin.storage
         .from('cvs')
         .upload(fileName, buffer, {
-          contentType: cvFile.type,
+          contentType: allowed[fileExt],
           upsert: false
         })
 
@@ -89,6 +100,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error("Application API Error:", error)
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not submit your application. Please try again.' }, { status: 500 })
   }
 }

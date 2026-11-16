@@ -1,13 +1,23 @@
+import { esc, isEmail } from '../../../lib/html'
+import { makeRef } from '../../../lib/refs'
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { rateLimit, clientIp } from '../../../lib/rate-limit'
+import { verifyTurnstile } from '../../../lib/turnstile'
 
 export async function POST(req: Request) {
+  const limited = await rateLimit(req, 'enquiry', 5, 3600)
+  if (limited) return limited
   try {
     const data = await req.json()
+    if (!(await verifyTurnstile(data.turnstileToken, clientIp(req)))) {
+      return NextResponse.json({ error: 'Verification failed. Please refresh the page and try again.' }, { status: 400 })
+    }
     
     // 1. Validate required fields
-    if (!data.name || !data.email || !data.phone) {
+    if (data.website) return NextResponse.json({ success: true }) // honeypot: bots fill hidden fields
+    if (!data.name || !isEmail(data.email) || !data.phone || String(data.name).length > 120 || String(data.phone).length > 40) {
       return NextResponse.json({ error: "Missing required contact fields." }, { status: 400 })
     }
 
@@ -62,13 +72,15 @@ export async function POST(req: Request) {
     // =====================================================================
     // 🧠 YC INNOVATION: INSTANT AUTO-QUOTE ENGINE
     // =====================================================================
-    if (data.draft_estimate_mur && data.draft_nights) {
+    // The estimate comes from the browser, so it is only a starting point for the admin. It can never be accepted by the client
+    // (the DRAFT- prefix is rejected by /api/accept-quote) and must be a sane number.
+    const estimate = Number(data.draft_estimate_mur)
+    if (Number.isFinite(estimate) && estimate > 0 && estimate < 50_000_000 && data.draft_nights) {
       try {
-        const randomNum = Math.floor(1000 + Math.random() * 9000)
-        const draftRef = `DRAFT-${new Date().getFullYear()}-${randomNum}`
+        const draftRef = makeRef('DRAFT')
 
         // Calculate VAT (15% is included in the estimate, so we reverse-calculate subtotal)
-        const total = data.draft_estimate_mur;
+        const total = estimate;
         const subtotal = total / 1.15;
         const vat = total - subtotal;
 
@@ -118,12 +130,12 @@ export async function POST(req: Request) {
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #1B4D3E;">New Bespoke Enquiry</h2>
-            <p><strong>Client:</strong> ${data.name} (${data.email})</p>
-            <p><strong>Destinations:</strong> ${data.destination}</p>
-            <p><strong>Travel Date:</strong> ${data.travel_start}</p>
-            <p><strong>Party:</strong> ${data.party_size}</p>
+            <p><strong>Client:</strong> ${esc(data.name)} (${esc(data.email)})</p>
+            <p><strong>Destinations:</strong> ${esc(data.destination)}</p>
+            <p><strong>Travel Date:</strong> ${esc(data.travel_start)}</p>
+            <p><strong>Party:</strong> ${esc(data.party_size)}</p>
             <div style="background-color: #FAF7F0; padding: 15px; border-left: 4px solid #C9A961; margin: 20px 0;">
-              <p style="margin: 0; white-space: pre-wrap;">${data.interests}</p>
+              <p style="margin: 0; white-space: pre-wrap;">${esc(data.interests)}</p>
             </div>
             <p style="color: #3D8B8B; font-weight: bold;">✨ A Draft Quotation has been automatically generated for this enquiry.</p>
             <a href="https://peaceandafrova.com/admin" style="background-color: #1B4D3E; color: white; padding: 10px 20px; text-decoration: none; display: inline-block;">Open Admin Dashboard</a>
@@ -159,9 +171,9 @@ export async function POST(req: Request) {
               <div style="background-color: #FAF7F0; padding: 20px; border-left: 4px solid #C9A961; margin: 30px 0;">
                 <p style="margin: 0; color: #4A4A4A; font-size: 14px;"><strong>Your Request Summary:</strong></p>
                 <p style="margin: 10px 0 0 0; color: #1A1A1A; font-size: 14px;">
-                  Destinations: ${data.destination}<br/>
-                  Travel Date: ${data.travel_start}<br/>
-                  Party: ${data.party_size}
+                  Destinations: ${esc(data.destination)}<br/>
+                  Travel Date: ${esc(data.travel_start)}<br/>
+                  Party: ${esc(data.party_size)}
                 </p>
               </div>
               

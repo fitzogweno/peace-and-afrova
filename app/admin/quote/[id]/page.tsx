@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, Plus, Trash2, Printer, Save, Percent, Send } from 'lucide-react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
+import { adminFetch } from '../../../../lib/admin-fetch'
 
 export default function QuotationBuilder() {
   const router = useRouter()
@@ -17,6 +18,8 @@ export default function QuotationBuilder() {
   const [isSaving, setIsSaving] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [savedRef, setSavedRef] = useState('')
+  const [today, setToday] = useState('')
+  useEffect(() => { setToday(new Date().toLocaleDateString()) }, [])
   
   const [catalog, setCatalog] = useState<any[]>([])
   const [selectedServiceId, setSelectedServiceId] = useState('')
@@ -97,7 +100,7 @@ export default function QuotationBuilder() {
 
   async function handleSave() {
     setIsSaving(true)
-    const res = await fetch('/api/quote', {
+    const res = await adminFetch('/api/quote', {
       method: 'POST',
       body: JSON.stringify({
         enquiry_id: enquiryId,
@@ -126,7 +129,7 @@ export default function QuotationBuilder() {
     }
 
     setIsSending(true)
-    const res = await fetch('/api/send-quote', {
+    const res = await adminFetch('/api/send-quote', {
       method: 'POST',
       body: JSON.stringify({
         quoteRef: savedRef,
@@ -178,7 +181,7 @@ export default function QuotationBuilder() {
           <div>
             <h1 className="font-serif text-4xl text-[#1B4D3E] mb-2">Proforma Invoice</h1>
             <p className="text-sm text-gray-500">Ref: {savedRef || 'Draft'}</p>
-            <p className="text-sm text-gray-500">Date: {new Date().toLocaleDateString()}</p>
+            <p className="text-sm text-gray-500">Date: {today}</p>
           </div>
           <div className="text-right">
             <div className="font-serif text-xl text-[#1B4D3E]">Peace and Afrova</div>
@@ -333,7 +336,7 @@ export default function QuotationBuilder() {
             </div>
             <div>
               <p className="font-medium text-[#1B4D3E] mb-1">Terms</p>
-              <p>• 50% deposit required to confirm.</p>
+              <p>• 30% deposit required to confirm.</p>
               <p>• Balance due 60 days prior to travel.</p>
               <p>• Quote valid for 14 days.</p>
               <p className="mt-4 font-medium text-[#3D8B8B]">

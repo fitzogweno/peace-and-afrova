@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, connection } from 'next/server'
 
 const weatherCoords: Record<string, { lat: number, lon: number }> = {
   'mauritius': { lat: -20.1619, lon: 57.4989 },
@@ -8,6 +8,8 @@ const weatherCoords: Record<string, { lat: number, lon: number }> = {
 }
 
 export async function GET(req: Request) {
+  // Mark this handler as request-time so Next never tries to prerender it at build (the catch below would swallow that signal).
+  await connection()
   try {
     const { searchParams } = new URL(req.url)
     const slug = searchParams.get('slug')

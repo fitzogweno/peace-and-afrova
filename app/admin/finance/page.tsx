@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '../../utils/supabase'
 import { Wallet, TrendingUp, AlertCircle, PieChart as PieIcon, BarChart3 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { adminFetch } from '../../../lib/admin-fetch'
 
 export default function FinanceDashboard() {
   const router = useRouter()
@@ -17,7 +18,7 @@ export default function FinanceDashboard() {
       if (!session) { router.push('/admin/login'); return }
 
       try {
-        const res = await fetch('/api/finance')
+        const res = await adminFetch('/api/finance')
         const json = await res.json()
         if (res.ok) setData(json)
       } catch (err) {

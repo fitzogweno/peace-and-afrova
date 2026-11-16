@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowRight, X, CheckCircle, Compass, Send, MapPin, Plane, Car, Hotel, Ship, Sparkles, Plus, Users, ArrowUpRight } from 'lucide-react'
 import { supabase } from '../utils/supabase'
 import { useApp } from '../context/AppContext'
+import { takeTurnstileToken } from '../../lib/turnstile-client'
 
 export default function ExperiencesPage() {
   const [experiences, setExperiences] = useState<any[]>([])
@@ -106,6 +107,7 @@ export default function ExperiencesPage() {
       await fetch('/api/enquiry', {
         method: 'POST',
         body: JSON.stringify({
+          turnstileToken: takeTurnstileToken(),
           name: formData.get('name'),
           email: formData.get('email'),
           phone: formData.get('phone'),

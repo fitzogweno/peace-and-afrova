@@ -10,6 +10,7 @@ export default function ClientLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [isRegistering, setIsRegistering] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -28,25 +29,12 @@ export default function ClientLogin() {
 
         if (authError) throw authError
 
-        if (authData.user) {
-          // 2. Link the Auth User to the existing Customer Record in your DB
-          const { error: updateError } = await supabase
-            .from('customers')
-            .update({ auth_id: authData.user.id })
-            .eq('email', email)
-
-          // If the customer record doesn't exist (they are brand new),
-          // we create a blank one so they can still log in.
-          if (updateError) {
-            await supabase.from('customers').insert({
-              email: email,
-              auth_id: authData.user.id,
-              full_name: 'Valued Guest'
-            })
-          }
+        // The link between this login and your booking record is made on the server after the email address is verified.
+        if (!authData.session) {
+          setNotice('Almost there. We have sent a confirmation link to your email. Open it, then sign in here.')
+          setLoading(false)
+          return
         }
-        
-        // Send them straight to the dashboard
         router.push('/portal/dashboard')
         
       } else {
@@ -77,6 +65,8 @@ export default function ClientLogin() {
             {isRegistering ? 'Create your account' : 'Client Portal'}
           </p>
         </div>
+
+        {notice && <div className="bg-[#1B4D3E]/10 text-[#1B4D3E] p-3 text-sm mb-6 text-center border border-[#1B4D3E]/20">{notice}</div>}
 
         {error && <div className="bg-red-50 text-red-600 p-3 text-sm mb-6 text-center border border-red-200">{error}</div>}
 

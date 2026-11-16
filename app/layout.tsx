@@ -5,6 +5,7 @@ import AnnouncementBar from "./components/AnnouncementBar";
 import WhatsAppButton from "./components/WhatsAppButton";
 import Footer from "./components/Footer"; // <-- IMPORTED FOOTER
 import { AppProvider } from "./context/AppContext";
+import TurnstileGate from './components/TurnstileGate'
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -33,6 +34,7 @@ export default function RootLayout({
         <AppProvider>
           <AnnouncementBar />
           {children}
+          <TurnstileGate />
           <Footer /> {/* <-- ADDED FOOTER HERE */}
           <WhatsAppButton />
         </AppProvider>

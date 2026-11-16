@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { MapPin, Globe, Coins, Clock, Plane, Calendar, CheckCircle, ArrowRight, ShieldCheck, AlertTriangle, Sun, Cloud, CloudRain, Wind, Droplets, CloudSun } from 'lucide-react'
 import { supabase } from '../../utils/supabase'
+import { takeTurnstileToken } from '../../../lib/turnstile-client'
 
 // Hardcoded destination data
 const destinationData: Record<string, any> = {
@@ -86,6 +87,7 @@ function DestinationContent() {
       await fetch('/api/enquiry', {
         method: 'POST',
         body: JSON.stringify({
+          turnstileToken: takeTurnstileToken(),
           name: formData.get('name'), email: formData.get('email'), phone: formData.get('phone'),
           party_size: formData.get('people'), travel_start: formData.get('date'),
           destination: dest.name, interests: `Quick Inquiry: ${formData.get('message')}`

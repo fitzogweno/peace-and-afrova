@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Handshake, CheckCircle, ShieldCheck, Building2, Map } from 'lucide-react'
 import { countryCodes } from '../countryCodes'
+import { takeTurnstileToken } from '../../lib/turnstile-client'
 
 export default function PartnersPage() {
   const [step, setStep] = useState(1)
@@ -50,7 +51,7 @@ export default function PartnersPage() {
       const res = await fetch('/api/partner-apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, turnstileToken: takeTurnstileToken() })
       })
       const data = await res.json()
       

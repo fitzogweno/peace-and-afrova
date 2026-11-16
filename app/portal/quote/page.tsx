@@ -26,13 +26,8 @@ function PortalContent() {
     if (!quoteRef) return
     async function fetchQuote() {
       // Fetching the service_credit from the linked bookings table
-      const { data } = await supabase
-        .from('quotations')
-        .select(`*, enquiries ( customers (full_name) ), bookings ( service_credit )`)
-        .eq('booking_ref', quoteRef)
-        .single()
-      
-      if (data) setQuote(data)
+      const res = await fetch(`/api/portal/quote?ref=${encodeURIComponent(quoteRef)}`, { cache: 'no-store' })
+      if (res.ok) setQuote((await res.json()).quote)
       setLoading(false)
     }
     fetchQuote()

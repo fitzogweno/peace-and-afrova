@@ -25,31 +25,12 @@ function ItineraryContent() {
   useEffect(() => {
     if (!quoteRef) return
     async function fetchBooking() {
-      const { data } = await supabase
-        .from('bookings')
-        .select(`
-          *, service_credit,
-          quotations ( 
-            quotation_items ( * ), 
-            supplier_bookings ( * ), 
-            enquiries ( hotel_details, destination, customers ( full_name ) ) 
-          )
-        `)
-        .eq('booking_ref', quoteRef)
-        .single()
-      
-      if (data) {
+      const res = await fetch(`/api/portal/itinerary?ref=${encodeURIComponent(quoteRef)}`, { cache: 'no-store' })
+      if (res.ok) {
+        const { booking: data, driverUnlocked } = await res.json()
         setBooking(data)
         fetchWeather()
-        
-        const travelDate = new Date(data.travel_start)
-        const today = new Date()
-        const diffTime = travelDate.getTime() - today.getTime()
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-        
-        if (diffDays <= 10 && diffDays >= 0) {
-          setIsDriverUnlocked(true)
-        }
+        setIsDriverUnlocked(!!driverUnlocked) // decided by the server; driver details are not sent before the unlock date
       }
       setLoading(false)
     }

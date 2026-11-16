@@ -1,23 +1,20 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '../../../lib/auth-admin'
+import { supabaseAdmin } from '../../../lib/supabase-admin'
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = await requireAdmin(req)
+  if (!auth.ok) return auth.response
+
   try {
-    // Use Service Role Key to bypass RLS for fetching the directory
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin()
       .from('partners')
       .select('*')
       .order('created_at', { ascending: false })
-
     if (error) throw error
-
     return NextResponse.json({ partners: data })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('PARTNERS LIST ERROR:', error)
+    return NextResponse.json({ error: 'Failed to load partners' }, { status: 500 })
   }
 }

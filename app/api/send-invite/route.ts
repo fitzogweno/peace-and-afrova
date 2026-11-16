@@ -1,7 +1,13 @@
+import { requireAdmin } from '../../../lib/auth-admin'
+import { supabaseAdmin } from '../../../lib/supabase-admin'
+import { esc } from '../../../lib/html'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
 export async function POST(req: Request) {
+  const auth = await requireAdmin(req)
+  if (!auth.ok) return auth.response
+
   try {
     const { clientEmail, clientName } = await req.json()
     const resend = new Resend(process.env.RESEND_API_KEY)
@@ -20,12 +26,12 @@ export async function POST(req: Request) {
           </div>
           
           <div style="background-color: #FFFFFF; padding: 40px; border: 1px solid #E5DFD3;">
-            <p style="font-size: 16px; line-height: 1.6;">Dear ${clientName},</p>
+            <p style="font-size: 16px; line-height: 1.6;">Dear ${esc(clientName)},</p>
             <p style="font-size: 16px; line-height: 1.6;">Welcome home. We hope your journey through Mauritius was extraordinary.</p>
             <p style="font-size: 16px; line-height: 1.6;">As a valued guest, we have created a private portal for you. Here, you can view your past itineraries, access your travel documents, and unlock exclusive offers for your next visit.</p>
             
             <div style="margin: 40px 0; text-align: center;">
-              <a href="${loginLink}" style="background-color: #C9A961; color: #1B4D3E; padding: 14px 28px; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; font-size: 14px; display: inline-block;">
+              <a href="${esc(loginLink)}" style="background-color: #C9A961; color: #1B4D3E; padding: 14px 28px; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; font-size: 14px; display: inline-block;">
                 Access Your Private Portal
               </a>
             </div>

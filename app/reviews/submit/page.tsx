@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Star } from 'lucide-react'
+import { takeTurnstileToken } from '../../../lib/turnstile-client'
 
 export default function SubmitReview() {
   const [rating, setRating] = useState(5)
@@ -18,6 +19,7 @@ export default function SubmitReview() {
     const res = await fetch('/api/review-submit', {
       method: 'POST',
       body: JSON.stringify({
+          turnstileToken: takeTurnstileToken(),
         client_name: formData.get('client_name'),
         email: formData.get('email'),
         review_text: formData.get('review_text'),

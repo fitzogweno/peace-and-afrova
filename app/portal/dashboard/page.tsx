@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
 import { Plane, LogOut, ArrowRight } from 'lucide-react'
+import { adminFetch } from '../../../lib/admin-fetch'
 
 export default function ClientDashboard() {
   const router = useRouter()
@@ -22,33 +23,19 @@ export default function ClientDashboard() {
         return
       }
 
-      // 2. Fetch customer record securely based on their Auth ID
-      const { data: customer } = await supabase
-        .from('customers')
-        .select('id, full_name')
-        .eq('auth_id', session.user.id)
-        .single()
-      
-      if (customer) {
+      // 2. The server verifies the login, links it to the customer record (verified email only) and returns this client's trips.
+      const res = await adminFetch('/api/portal/me')
+      if (res.status === 403) {
+        const { error } = await res.json()
+        alert(error)
+        await supabase.auth.signOut()
+        router.push('/portal/login')
+        return
+      }
+      if (res.ok) {
+        const { customer, bookings: bookingsData } = await res.json()
         setClientName(customer.full_name)
-
-        // 3. SMART FETCH: Only fetch THIS client's bookings from the database
-        // No more downloading the whole database and filtering in the browser.
-        const { data: bookingsData } = await supabase
-          .from('bookings')
-          .select(`
-            *,
-            quotations!inner ( 
-              enquiries!inner ( customer_id ) 
-            )
-          `)
-          .eq('quotations.enquiries.customer_id', customer.id)
-          .neq('payment_status', 'Pending')
-          .order('travel_start', { ascending: true })
-        
-        if (bookingsData) {
-          setBookings(bookingsData)
-        }
+        setBookings(bookingsData)
       }
       setLoading(false)
     }

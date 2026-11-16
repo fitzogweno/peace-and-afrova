@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { supabaseAdmin } from '../../../../lib/supabase-admin'
+import { esc } from '../../../../lib/html'
+import { BALANCE_DUE_DAYS } from '../../../../lib/pricing'
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
@@ -10,20 +12,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = supabaseAdmin()
   const resend = new Resend(process.env.RESEND_API_KEY)
 
   try {
-    const sevenDaysFromNow = new Date()
-    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7)
-    const targetDate = sevenDaysFromNow.toISOString().split('T')[0]
+    // "Today" and the departure date are Mauritius dates (UTC+4), not server (UTC) dates.
+    const target = new Date(Date.now() + BALANCE_DUE_DAYS * 86_400_000)
+    const targetDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Indian/Mauritius' }).format(target)
 
     const { data: bookings, error } = await supabase
       .from('bookings')
       .select(`
+        id,
         booking_ref,
         customer_name,
         total_amount,
@@ -31,7 +31,8 @@ export async function GET(request: Request) {
         quotations ( enquiries ( customers ( email ) ) )
       `)
       .eq('travel_start', targetDate)
-      .neq('payment_status', 'Paid')
+      .eq('payment_status', 'Partially Paid') // a Pending (unpaid deposit) booking is not owed a balance reminder
+      .is('balance_reminder_sent_at', null)   // never send the same reminder twice
 
     if (error) throw error
 
@@ -39,6 +40,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, message: 'No balance reminders to send today.' })
     }
 
+    let sent = 0
     for (const booking of bookings) {
       // FIXED: Safely unwrapping the nested objects to satisfy TypeScript
       const q = booking.quotations as any
@@ -61,17 +63,24 @@ export async function GET(request: Request) {
         html: `
           <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #1B4D3E;">Final Balance Reminder</h2>
-            <p>Dear ${booking.customer_name},</p>
-            <p>This is a friendly reminder that the final balance for your upcoming trip (<strong>${booking.booking_ref}</strong>) is due now, as your departure is in 7 days.</p>
+            <p>Dear ${esc(booking.customer_name)},</p>
+            <p>This is a friendly reminder that the final balance for your upcoming trip (<strong>${esc(booking.booking_ref)}</strong>) is due now, as your departure is in 7 days.</p>
             <p>Total Trip Cost: Rs ${booking.total_amount.toLocaleString()}</p>
             <p>Please log in to your private portal to complete the payment and unlock your final travel documents.</p>
-            <a href="https://peaceandafrova.com/portal/hub?ref=${booking.booking_ref}" style="display: inline-block; background-color: #1B4D3E; color: white; padding: 10px 20px; text-decoration: none; margin-top: 20px;">Go to Your Portal</a>
+            <a href="https://peaceandafrova.com/portal/hub?ref=${esc(booking.booking_ref)}" style="display: inline-block; background-color: #1B4D3E; color: white; padding: 10px 20px; text-decoration: none; margin-top: 20px;">Go to Your Portal</a>
           </div>
         `,
       })
+
+      const { error: markErr } = await supabase
+        .from('bookings')
+        .update({ balance_reminder_sent_at: new Date().toISOString() })
+        .eq('id', (booking as any).id)
+      if (markErr) console.error('Could not record balance reminder:', markErr)
+      sent++
     }
 
-    return NextResponse.json({ success: true, remindersSent: bookings.length })
+    return NextResponse.json({ success: true, remindersSent: sent })
   } catch (error: any) {
     console.error('BALANCE REMINDER CRON ERROR:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })

@@ -1,11 +1,10 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useParams } from 'next/navigation'
-import { supabase } from '../../../utils/supabase'
 import { CheckCircle, Clock, MapPin, User, Plane, AlertTriangle, Car } from 'lucide-react'
 
-export default function MagicLinkJobPage() {
+function MagicLinkJobPageContent() {
   const params = useParams()
   const jobId = params.id as string
   
@@ -13,21 +12,18 @@ export default function MagicLinkJobPage() {
   const [loading, setLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
 
+  // The URL segment is the driver's secret token (not the row id): read and write only through the token API.
   useEffect(() => {
     async function fetchJob() {
-      const { data } = await supabase
-        .from('supplier_bookings')
-        .select(`
-          id, service_description, pickup_time, driver_name, vehicle_plate, confirmation_number, job_status,
-          quotations (
-            bookings ( travel_start, customer_name, car_seats, dietary_needs ),
-            enquiries ( arrival_flight, departure_flight, hotel_details )
-          )
-        `)
-        .eq('id', jobId)
-        .single()
-      
-      if (data) setJob(data)
+      try {
+        const res = await fetch(`/api/driver/job?token=${encodeURIComponent(jobId)}`, { cache: 'no-store' })
+        if (res.ok) {
+          const { job } = await res.json()
+          setJob(job)
+        }
+      } catch (err) {
+        console.error('Could not load job', err)
+      }
       setLoading(false)
     }
     if (jobId) fetchJob()
@@ -35,13 +31,17 @@ export default function MagicLinkJobPage() {
 
   async function updateStatus(newStatus: string) {
     setIsUpdating(true)
-    const updateData: any = { job_status: newStatus }
-    if (newStatus === 'Picked Up') {
-      updateData.picked_up_at = new Date().toISOString()
+    try {
+      const res = await fetch('/api/driver/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: jobId, newStatus }),
+      })
+      if (res.ok) setJob({ ...job, job_status: newStatus })
+      else alert('Could not update the job. Please check your connection and try again.')
+    } catch {
+      alert('Could not update the job. Please check your connection and try again.')
     }
-
-    await supabase.from('supplier_bookings').update(updateData).eq('id', jobId)
-    setJob({ ...job, job_status: newStatus })
     setIsUpdating(false)
   }
 
@@ -125,5 +125,14 @@ export default function MagicLinkJobPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Route params are runtime data: the content must render inside Suspense for Cache Components prerendering.
+export default function MagicLinkJobPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#F5F0E6] text-[#1B4D3E] font-serif text-2xl">Loading...</div>}>
+      <MagicLinkJobPageContent />
+    </Suspense>
   )
 }

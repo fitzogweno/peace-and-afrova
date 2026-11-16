@@ -17,6 +17,7 @@ function ScanContent() {
     setIsConfirming(true)
     const res = await fetch('/api/scan-voucher', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ voucherId })
     })
     
@@ -47,8 +48,8 @@ function ScanContent() {
         {success ? (
           <div className="text-center">
             <CheckCircle className="mx-auto text-green-500 mb-4" size={64} />
-            <h1 className="font-serif text-3xl text-[#1B4D3E] mb-2">Pickup Confirmed</h1>
-            <p className="text-gray-600 mb-8">The office has been notified. Have a safe journey, {clientName}.</p>
+            <h1 className="font-serif text-3xl text-[#1B4D3E] mb-2">Passenger Verified</h1>
+            <p className="text-gray-600 mb-8">Voucher verified for {clientName}. Press the pickup button on your job card when the passenger is in the vehicle.</p>
             <button onClick={() => router.push('/driver/dashboard')} className="w-full bg-[#1B4D3E] text-white px-6 py-4 text-sm tracking-widest uppercase font-bold hover:bg-[#C9A961] hover:text-[#1B4D3E] transition">
               Return to My Jobs
             </button>
@@ -56,10 +57,10 @@ function ScanContent() {
         ) : (
           <div>
             <h1 className="font-serif text-3xl text-[#1B4D3E] mb-2">Scan Voucher</h1>
-            <p className="text-gray-600 mb-8">You are about to confirm pickup for <strong>{clientName}</strong>.</p>
+            <p className="text-gray-600 mb-8">Verify the voucher for <strong>{clientName}</strong>.</p>
             
             <button onClick={confirmPickup} disabled={isConfirming} className="w-full bg-green-600 text-white py-6 text-lg tracking-widest uppercase font-bold hover:bg-green-700 transition disabled:opacity-50">
-              {isConfirming ? 'Confirming...' : 'Confirm Pickup'}
+              {isConfirming ? 'Verifying...' : 'Verify Passenger'}
             </button>
           </div>
         )}

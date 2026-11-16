@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../utils/supabase'
 import { Calendar, RefreshCw, Plane, MapPin, User, AlertTriangle } from 'lucide-react'
+import { adminFetch } from '../../../lib/admin-fetch'
 
 export default function DispatchBoard() {
   const router = useRouter()
@@ -34,7 +35,7 @@ export default function DispatchBoard() {
         const { data, error } = await supabase
           .from('supplier_bookings')
           .select(`
-            id, service_description, pickup_time, driver_name, vehicle_plate, confirmation_number,
+            id, access_token, service_date, supplier_name, service_description, pickup_time, driver_name, vehicle_plate, confirmation_number,
             quotations (
               bookings ( travel_start, customer_name, car_seats, dietary_needs ),
               enquiries ( arrival_flight, departure_flight, hotel_details )
@@ -51,9 +52,9 @@ export default function DispatchBoard() {
           const enquiry = Array.isArray(quotation?.enquiries) ? quotation.enquiries[0] : quotation?.enquiries;
           
           return {
-            id: item.id, service: item.service_description, pickup: item.pickup_time || '00:00',
+            id: item.id, token: item.access_token, service: item.service_description, pickup: item.pickup_time || '00:00',
             driver: item.driver_name, plate: item.vehicle_plate, ref: item.confirmation_number,
-            clientName: booking?.customer_name, travelStart: booking?.travel_start,
+            clientName: booking?.customer_name, travelStart: item.service_date || booking?.travel_start, supplier: item.supplier_name,
             arrivalFlight: enquiry?.arrival_flight, departureFlight: enquiry?.departure_flight,
             hotel: enquiry?.hotel_details, carSeats: booking?.car_seats, dietary: booking?.dietary_needs
           }
@@ -74,7 +75,7 @@ export default function DispatchBoard() {
   async function handleUpdateTime(id: string, newTime: string) {
     setUpdatingId(id)
     try {
-      const response = await fetch('/api/update-pickup', {
+      const response = await adminFetch('/api/update-pickup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, pickup_time: newTime })
@@ -119,7 +120,7 @@ export default function DispatchBoard() {
                 {bookings.map((b) => (
                   <tr key={b.id} className="border-b border-[#E5DFD3] hover:bg-[#FAF7F0] transition">
                     <td className="p-4">
-                      <div className="font-medium text-[#1B4D3E] mb-1">{b.clientName}</div>
+                      <div className="font-medium text-[#1B4D3E] mb-1">{b.clientName || b.supplier || 'Partner service'}</div>
                       <div className="flex flex-col gap-1">
                         {b.carSeats && <div className="flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-100 px-2 py-0.5 rounded w-max"><AlertTriangle size={10} /> Car Seat: {b.carSeats}</div>}
                         {b.dietary && <div className="flex items-center gap-1 text-[10px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded w-max"><AlertTriangle size={10} /> Diet: {b.dietary}</div>}
@@ -142,7 +143,7 @@ export default function DispatchBoard() {
                         <div>
                           <div className="flex items-center justify-between gap-4">
                             <div className="flex items-center gap-1 font-medium text-[#1B4D3E]"><User size={14}/> {b.driver}</div>
-                            <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/driver/job/${b.id}`); alert("Magic Link copied!"); }} className="text-[10px] bg-[#C9A961] text-[#1B4D3E] px-2 py-1 rounded-sm hover:bg-[#b09552] transition font-bold uppercase tracking-wider">Copy Link</button>
+                            <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/driver/job/${b.token}`); alert("Magic link copied. Paste it into the driver's WhatsApp."); }} className="text-[10px] bg-[#C9A961] text-[#1B4D3E] px-2 py-1 rounded-sm hover:bg-[#b09552] transition font-bold uppercase tracking-wider">Copy Link</button>
                           </div>
                           <div className="text-xs mt-1 bg-gray-100 px-2 py-0.5 rounded text-gray-600 inline-block">{b.plate || 'No Plate'}</div>
                         </div>

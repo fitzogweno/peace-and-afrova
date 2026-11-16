@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
 import { Building2, Mail, Phone, Globe, Map, CheckCircle, XCircle, Users } from 'lucide-react'
+import { adminFetch } from '../../../lib/admin-fetch'
 
 export default function AdminPartners() {
   const router = useRouter()
@@ -22,7 +23,7 @@ export default function AdminPartners() {
       if (!appError && appData) setApplications(appData)
 
       try {
-        const res = await fetch('/api/partners')
+        const res = await adminFetch('/api/partners')
         if (res.ok) {
           const json = await res.json()
           setActivePartners(json.partners || [])
@@ -38,7 +39,7 @@ export default function AdminPartners() {
     if (!confirm(`Are you sure you want to ${action} this application?`)) return
     setProcessingId(id)
     try {
-      const res = await fetch('/api/partners/approve', {
+      const res = await adminFetch('/api/partners/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ applicationId: id, action })

@@ -1,10 +1,19 @@
+import { requireAdmin } from '../../../lib/auth-admin'
+import { supabaseAdmin } from '../../../lib/supabase-admin'
+import { esc, isEmail } from '../../../lib/html'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
 export async function POST(req: Request) {
+  const auth = await requireAdmin(req)
+  if (!auth.ok) return auth.response
+
   try {
     const resend = new Resend(process.env.RESEND_API_KEY)
     const body = await req.json()
+    if (!isEmail(body.clientEmail) || typeof body.quoteRef !== 'string' || !body.quoteRef) {
+      return NextResponse.json({ error: 'A valid client email and quote reference are required' }, { status: 400 })
+    }
     
     // Default to English if no language provided
     const lang = body.language || 'EN'
@@ -35,24 +44,32 @@ export async function POST(req: Request) {
           </div>
           
           <div style="background-color: #FFFFFF; padding: 40px; border: 1px solid #E5DFD3;">
-            <p style="font-size: 16px; line-height: 1.6;">${greeting}</p>
-            <p style="font-size: 16px; line-height: 1.6;">${intro}</p>
+            <p style="font-size: 16px; line-height: 1.6;">${esc(greeting)}</p>
+            <p style="font-size: 16px; line-height: 1.6;">${esc(intro)}</p>
             
             <div style="margin: 40px 0; text-align: center;">
-              <a href="${clientPortalLink}" style="background-color: #C9A961; color: #1B4D3E; padding: 14px 28px; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; font-size: 14px; display: inline-block;">
-                ${cta}
+              <a href="${esc(clientPortalLink)}" style="background-color: #C9A961; color: #1B4D3E; padding: 14px 28px; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; font-size: 14px; display: inline-block;">
+                ${esc(cta)}
               </a>
             </div>
           </div>
 
           <div style="margin-top: 40px; text-align: center; font-size: 12px; color: #8A8A8A;">
-            <p>${signoff}<br/>The Peace and Afrova Team<br/>Curepipe Forest Side, Mauritius</p>
+            <p>${esc(signoff)}<br/>The Peace and Afrova Team<br/>Curepipe Forest Side, Mauritius</p>
           </div>
         </div>
       `,
     })
 
-    if (error) return NextResponse.json({ error }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Email could not be sent' }, { status: 500 })
+
+    // Record that the client has actually received the proposal. Abandoned-quote recovery only targets these.
+    await supabaseAdmin()
+      .from('quotations')
+      .update({ quote_status: 'Sent', sent_at: new Date().toISOString() })
+      .eq('booking_ref', body.quoteRef)
+      .eq('quote_status', 'Draft')
+
     return NextResponse.json({ success: true })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })

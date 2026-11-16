@@ -1,16 +1,26 @@
+import { esc, isEmail } from '../../../lib/html'
+import { supabaseAdmin } from '../../../lib/supabase-admin'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { rateLimit, clientIp } from '../../../lib/rate-limit'
+import { verifyTurnstile } from '../../../lib/turnstile'
 
 export async function POST(req: Request) {
+  const limited = await rateLimit(req, 'review', 3, 3600)
+  if (limited) return limited
   try {
     const body = await req.json()
+    if (!(await verifyTurnstile(body.turnstileToken, clientIp(req)))) {
+      return NextResponse.json({ error: 'Verification failed. Please refresh the page and try again.' }, { status: 400 })
+    }
+    const rating = Number(body.rating)
+    if (!isEmail(body.email) || !Number.isInteger(rating) || rating < 1 || rating > 5 ||
+        String(body.client_name || '').length > 120 || String(body.review_text || '').length > 3000) {
+      return NextResponse.json({ error: 'Invalid review' }, { status: 400 })
+    }
     const resend = new Resend(process.env.RESEND_API_KEY)
     
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    const supabase = supabaseAdmin()
 
     // 1. Save review
     const { error } = await supabase.from('reviews').insert({
@@ -36,7 +46,7 @@ export async function POST(req: Request) {
           
           <div style="background-color: #FFFFFF; padding: 40px; border: 1px solid #E5DFD3; text-align: center;">
             <h2 style="color: #1B4D3E; font-weight: normal; margin-bottom: 20px;">Thank you for your feedback</h2>
-            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 30px;">Dear ${body.client_name},</p>
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 30px;">Dear ${esc(body.client_name)},</p>
             <p style="font-size: 16px; line-height: 1.6;">We are thrilled to hear about your experience with us. Thank you for taking the time to share your review.</p>
             
             <p style="font-size: 16px; line-height: 1.6; margin-top: 30px;">As a token of our appreciation, we have also subscribed you to our exclusive newsletter. To discover more of what Mauritius has to offer, explore our curated experiences below.</p>

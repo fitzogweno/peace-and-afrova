@@ -1,13 +1,18 @@
+import { requireAdmin } from '../../../lib/auth-admin'
+import { supabaseAdmin } from '../../../lib/supabase-admin'
+import { esc } from '../../../lib/html'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req: Request) {
+  const auth = await requireAdmin(req)
+  if (!auth.ok) return auth.response
+
   try {
     const { flightNumber, bookingRef } = await req.json()
     const apiKey = process.env.AERODATABOX_API_KEY
     if (!apiKey) throw new Error("AERODATABOX_API_KEY is not set.")
 
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    const supabase = supabaseAdmin()
 
     // 1. Find the enquiry to get the travel date
     const { data: quotation, error: quoteError } = await supabase

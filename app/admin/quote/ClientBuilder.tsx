@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, Trash2, Printer, Save, Percent, Send, Gift, FileText, 
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '../../utils/supabase'
 import { useApp } from '../../context/AppContext'
+import { adminFetch } from '../../../lib/admin-fetch'
 
 function BuilderContent() {
   const router = useRouter()
@@ -20,6 +21,8 @@ function BuilderContent() {
   const [isSaving, setIsSaving] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [savedRef, setSavedRef] = useState('')
+  const [today, setToday] = useState('')
+  useEffect(() => { setToday(new Date().toLocaleDateString()) }, [])
   
   const [catalog, setCatalog] = useState<any[]>([])
   const [selectedServiceId, setSelectedServiceId] = useState('')
@@ -124,7 +127,7 @@ function BuilderContent() {
     // We will delete the old draft items and re-insert to prevent duplicates
     // In a production app, you would update the existing items.
     
-    const res = await fetch('/api/quote', {
+    const res = await adminFetch('/api/quote', {
       method: 'POST',
       body: JSON.stringify({ 
         enquiry_id: enquiryId, 
@@ -152,7 +155,7 @@ function BuilderContent() {
   async function handleSendEmail() {
     if (!savedRef) return alert("Please save the Proforma Invoice first.")
     setIsSending(true)
-    const res = await fetch('/api/send-quote', {
+    const res = await adminFetch('/api/send-quote', {
       method: 'POST',
       body: JSON.stringify({ quoteRef: savedRef, clientEmail: customerEmail, clientName: customerName, currency: quoteCurrency, language: 'EN' })
     })
@@ -240,7 +243,7 @@ function BuilderContent() {
           <div>
             <h1 className="font-serif text-4xl text-[#1B4D3E] mb-2">Proforma Invoice</h1>
             <p className="text-sm text-gray-500">Ref: {savedRef || 'Draft'}</p>
-            <p className="text-sm text-gray-500">Date: {new Date().toLocaleDateString()}</p>
+            <p className="text-sm text-gray-500">Date: {today}</p>
           </div>
           <div className="text-right">
             <div className="font-serif text-xl text-[#1B4D3E]">Peace and Afrova</div>

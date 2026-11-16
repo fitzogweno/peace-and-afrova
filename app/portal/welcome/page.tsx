@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Shield, Wifi, Map, CheckCircle } from 'lucide-react'
 import { supabase } from '../../utils/supabase'
+import { adminFetch } from '../../../lib/admin-fetch'
 
 function WelcomeContent() {
   const searchParams = useSearchParams()
@@ -27,14 +28,8 @@ function WelcomeContent() {
       if (!quoteRef) { setLoading(false); return }
 
       // 2. Fetch the destination and the booking (for branding)
-      const { data } = await supabase
-        .from('quotations')
-        .select(`
-          enquiries (destination), 
-          bookings ( client_logo_url, client_brand_name, client_welcome_message, branding_status )
-        `)
-        .eq('booking_ref', quoteRef)
-        .single()
+      const res = await adminFetch(`/api/portal/welcome?ref=${encodeURIComponent(quoteRef)}`)
+      const data = res.ok ? (await res.json()).data : null
       
       if (data) {
         const enq = Array.isArray(data.enquiries) ? data.enquiries[0] : data.enquiries

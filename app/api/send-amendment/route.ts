@@ -1,12 +1,20 @@
+import { supabaseAdmin } from '../../../lib/supabase-admin'
+import { esc } from '../../../lib/html'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { createClient } from '@supabase/supabase-js'
+import { rateLimit, clientIp } from '../../../lib/rate-limit'
 
 export async function POST(req: Request) {
+  const limited = await rateLimit(req, 'amendment', 10, 3600)
+  if (limited) return limited
   try {
     const body = await req.json()
+    if (typeof body.quoteRef !== 'string' || !body.quoteRef || String(body.message || '').length > 2000 ||
+        String(body.targetBudget || '').length > 60 || String(body.adjustmentType || '').length > 80) {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    }
     const resend = new Resend(process.env.RESEND_API_KEY)
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    const supabase = supabaseAdmin()
 
     // 1. Format the request details to save and email
     const requestSummary = `Adjustment: ${body.adjustmentType}. Target Budget: ${body.targetBudget || 'Not specified'}. Notes: ${body.message}`
@@ -19,6 +27,7 @@ export async function POST(req: Request) {
         counter_offer_status: 'Pending' // We use this to trigger the admin red alert
       })
       .eq('booking_ref', body.quoteRef)
+      .neq('quote_status', 'Accepted')
 
     if (updateError) throw updateError
 
@@ -35,13 +44,13 @@ export async function POST(req: Request) {
           </div>
           
           <div style="background-color: #FFFFFF; padding: 40px; border: 1px solid #E5DFD3;">
-            <p style="font-size: 16px; line-height: 1.6;">Client <strong>${body.clientName}</strong> has requested to tailor Quote <strong>${body.quoteRef}</strong>.</p>
+            <p style="font-size: 16px; line-height: 1.6;">Client <strong>${esc(body.clientName)}</strong> has requested to tailor Quote <strong>${esc(body.quoteRef)}</strong>.</p>
             
             <div style="background-color: #FAF7F0; padding: 20px; border-left: 4px solid #C9A961; margin: 20px 0;">
               <p style="margin: 0 0 10px 0;"><strong>Target Budget:</strong> ${body.targetBudget || 'Not specified'}</p>
-              <p style="margin: 0 0 10px 0;"><strong>Requested Change:</strong> ${body.adjustmentType}</p>
+              <p style="margin: 0 0 10px 0;"><strong>Requested Change:</strong> ${esc(body.adjustmentType)}</p>
               <p style="margin: 0;"><strong>Client's Message:</strong></p>
-              <p style="margin: 0; font-style: italic; color: #4A4A4A;">"${body.message}"</p>
+              <p style="margin: 0; font-style: italic; color: #4A4A4A;">"${esc(body.message)}"</p>
             </div>
 
             <div style="text-align: center; margin-top: 30px;">

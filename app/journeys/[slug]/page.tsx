@@ -1,11 +1,12 @@
 "use client"
+import { Suspense } from 'react'
 
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft, ArrowRight, CheckCircle, XCircle } from 'lucide-react'
 
-export default function JourneyDetailPage() {
+function JourneyDetailPageContent() {
   const params = useParams()
   const slug = params.slug as string
 
@@ -143,5 +144,14 @@ export default function JourneyDetailPage() {
       </section>
 
     </main>
+  )
+}
+
+// Route params are runtime data: the content must render inside Suspense for Cache Components prerendering.
+export default function JourneyDetailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#F5F0E6] text-[#1B4D3E] font-serif text-2xl">Loading...</div>}>
+      <JourneyDetailPageContent />
+    </Suspense>
   )
 }

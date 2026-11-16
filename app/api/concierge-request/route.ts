@@ -1,12 +1,20 @@
+import { supabaseAdmin } from '../../../lib/supabase-admin'
+import { esc } from '../../../lib/html'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { sendWhatsAppMessage } from '../../../lib/whatsapp'
+import { rateLimit, clientIp } from '../../../lib/rate-limit'
 
 export async function POST(req: Request) {
+  const limited = await rateLimit(req, 'concierge', 10, 3600)
+  if (limited) return limited
   try {
     const { bookingRef, customerName, requestType, requestDetails } = await req.json()
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    if (typeof bookingRef !== 'string' || !bookingRef || String(customerName || '').length > 120 ||
+        String(requestType || '').length > 80 || String(requestDetails || '').length > 2000) {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    }
+    const supabase = supabaseAdmin()
     const resend = new Resend(process.env.RESEND_API_KEY)
 
     // 1. Save to Database
@@ -27,21 +35,21 @@ export async function POST(req: Request) {
       html: `
         <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h2 style="color: #1B4D3E;">New Concierge Request</h2>
-          <p><strong>Client:</strong> ${customerName}</p>
-          <p><strong>Booking Ref:</strong> ${bookingRef}</p>
-          <p><strong>Type:</strong> ${requestType}</p>
+          <p><strong>Client:</strong> ${esc(customerName)}</p>
+          <p><strong>Booking Ref:</strong> ${esc(bookingRef)}</p>
+          <p><strong>Type:</strong> ${esc(requestType)}</p>
           <div style="background-color: #FAF7F0; padding: 20px; border-left: 4px solid #C9A961; margin: 20px 0;">
-            <p style="margin: 0; font-style: italic;">"${requestDetails}"</p>
+            <p style="margin: 0; font-style: italic;">"${esc(requestDetails)}"</p>
           </div>
         </div>
       `,
     })
 
     // 3. Alert Admin via WhatsApp
-    const adminWhatsApp = "+23057400125" // Your business WhatsApp number
+    const adminWhatsApp = process.env.ADMIN_WHATSAPP_NUMBER || ""
     const waMessage = `🌟 *New Concierge Request*\n\nClient: ${customerName}\nRef: ${bookingRef}\nType: ${requestType}\n\nMessage: "${requestDetails}"`
     
-    sendWhatsAppMessage(adminWhatsApp, waMessage)
+    if (adminWhatsApp) await sendWhatsAppMessage(adminWhatsApp, waMessage)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

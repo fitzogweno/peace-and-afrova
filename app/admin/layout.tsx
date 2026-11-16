@@ -1,14 +1,34 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../utils/supabase'
+import { adminFetch } from '../../lib/admin-fetch'
 import { LayoutDashboard, Calendar, Map, Navigation, Wallet, Handshake, CheckCircle, Settings, Users, LogOut } from 'lucide-react'
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
+
+  const isLogin = pathname === '/admin/login'
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    if (isLogin) { setReady(true); return }
+    let active = true
+    async function verify() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { router.replace('/admin/login'); return }
+      // Client accounts are Supabase users too, so confirm this account is on the admin allow-list.
+      const res = await adminFetch('/api/admin/session')
+      if (!active) return
+      if (!res.ok) { await supabase.auth.signOut(); router.replace('/admin/login'); return }
+      setReady(true)
+    }
+    verify()
+    return () => { active = false }
+  }, [isLogin, router])
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -27,6 +47,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Rate Catalog', href: '/admin/rates', icon: <Settings size={18} /> },
     { name: 'Partner Network', href: '/admin/partners', icon: <Handshake size={18} /> },
   ]
+
+  if (isLogin) return <>{children}</>
+  if (!ready) {
+    return <div className="min-h-screen bg-[#F5F0E6] flex items-center justify-center text-[#1B4D3E] font-serif text-2xl">Checking access...</div>
+  }
 
   return (
     <div className="min-h-screen bg-[#F5F0E6] flex font-sans text-[#1A1A1A]">
@@ -63,5 +88,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {children}
       </main>
     </div>
+  )
+}
+
+// usePathname() is runtime data, so on dynamic routes (e.g. /admin/quote/[id]) it must sit inside Suspense
+// or Cache Components blocks the prerender.
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#F5F0E6] flex items-center justify-center text-[#1B4D3E] font-serif text-2xl">Loading...</div>}>
+      <AdminShell>{children}</AdminShell>
+    </Suspense>
   )
 }

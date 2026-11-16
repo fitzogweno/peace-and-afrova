@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../utils/supabase'
 import { Trophy, AlertTriangle } from 'lucide-react'
+import { LATE_GRACE_MINUTES } from '../../../lib/pricing'
 
 export default function SupplierScorecard() {
   const router = useRouter()
@@ -15,14 +16,14 @@ export default function SupplierScorecard() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/admin/login'); return }
 
-      const { data } = await supabase.from('supplier_bookings').select('driver_name, job_status, delay_minutes, driver_acknowledged_at, disruption_status').not('driver_name', 'is', null)
+      const { data } = await supabase.from('supplier_bookings').select('driver_name, job_status, driver_minutes_late, driver_acknowledged_at, disruption_status').not('driver_name', 'is', null)
 
       if (data) {
         const stats = data.reduce((acc: any, job: any) => {
           const name = job.driver_name
           if (!acc[name]) acc[name] = { name, totalJobs: 0, lateJobs: 0, totalDelayMins: 0, unacknowledged: 0 }
           acc[name].totalJobs += 1
-          if (job.delay_minutes > 0) { acc[name].lateJobs += 1; acc[name].totalDelayMins += job.delay_minutes }
+          if (job.driver_minutes_late > LATE_GRACE_MINUTES) { acc[name].lateJobs += 1; acc[name].totalDelayMins += job.driver_minutes_late }
           if (job.disruption_status === 'Notified') acc[name].unacknowledged += 1
           return acc
         }, {})

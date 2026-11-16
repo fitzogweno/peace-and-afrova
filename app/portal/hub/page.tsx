@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
 import { FileText, Map, CheckCircle, Download, ArrowRight, ConciergeBell, X, Info, UserCheck, LogOut, Palette, UploadCloud } from 'lucide-react'
+import { adminFetch } from '../../../lib/admin-fetch'
 
 function HubContent() {
   const searchParams = useSearchParams()
@@ -45,35 +46,16 @@ function HubContent() {
 
       if (!quoteRef) { setLoading(false); return }
 
-      // 2. Fetch Quote & Booking
-      const { data: quoteData } = await supabase
-        .from('quotations')
-        .select(`*, enquiries ( travel_start, customers (full_name) )`)
-        .eq('booking_ref', quoteRef)
-        .single()
-      
-      if (quoteData) {
+      // 2. One server call: it checks that this signed-in customer owns the quote before returning anything.
+      const res = await adminFetch(`/api/portal/hub?ref=${encodeURIComponent(quoteRef)}`)
+      if (res.ok) {
+        const { quote: quoteData, booking: bookingData, requests: reqs } = await res.json()
         setQuote(quoteData)
-        
-        const { data: bookingData } = await supabase
-          .from('bookings')
-          .select('*')
-          .eq('quotation_id', quoteData.id)
-          .maybeSingle()
-
         if (bookingData) {
           setBooking(bookingData)
           setBrandName(bookingData.client_brand_name || '')
           setWelcomeMsg(bookingData.client_welcome_message || '')
         }
-
-        // 3. Fetch Client's Concierge/Upsell Requests
-        const { data: reqs } = await supabase
-          .from('concierge_requests')
-          .select('*')
-          .eq('booking_ref', quoteRef)
-          .order('created_at', { ascending: false })
-        
         if (reqs) setConciergeRequests(reqs)
       }
       setLoading(false)
@@ -117,10 +99,8 @@ function HubContent() {
   }
 
   async function acceptQuote(requestId: string) {
-    await supabase
-      .from('concierge_requests')
-      .update({ status: 'accepted' })
-      .eq('id', requestId)
+    const res = await adminFetch('/api/portal/concierge-accept', { method: 'POST', body: JSON.stringify({ requestId }) })
+    if (!res.ok) { alert('Could not accept the request. Please try again.'); return }
     
     // Update local state so UI reflects immediately
     setConciergeRequests(prev =>
@@ -134,14 +114,15 @@ function HubContent() {
     setIsSubmittingIntake(true)
     const formData = new FormData(e.currentTarget)
     
-    await supabase.from('bookings').update({
-      intake_flight: formData.get('flight'),
-      dietary_needs: formData.get('dietary'),
-      special_occasion: formData.get('occasion'),
-      car_seats: formData.get('carseats'),
-      pace_preference: formData.get('pace'),
-      intake_submitted: true
-    }).eq('id', booking.id)
+    const intakeRes = await adminFetch('/api/portal/intake', {
+      method: 'POST',
+      body: JSON.stringify({
+        ref: quoteRef,
+        flight: formData.get('flight'), dietary: formData.get('dietary'), occasion: formData.get('occasion'),
+        carseats: formData.get('carseats'), pace: formData.get('pace'),
+      }),
+    })
+    if (!intakeRes.ok) { alert('Could not save your details. Please try again.'); setIsSubmittingIntake(false); return }
 
     setBooking({ ...booking, intake_submitted: true })
     setIsSubmittingIntake(false)
@@ -155,26 +136,14 @@ function HubContent() {
     setBrandSuccess(false)
 
     try {
-      let logoUrl = booking.client_logo_url
-
-      // Upload file to Supabase Storage if a new one is selected
-      if (logoFile) {
-        const fileExt = logoFile.name.split('.').pop()
-        const fileName = `${booking.id}-${Date.now()}.${fileExt}`
-        const { error: uploadError } = await supabase.storage.from('client-logos').upload(fileName, logoFile)
-        if (uploadError) throw uploadError
-        
-        const { data: publicUrl } = supabase.storage.from('client-logos').getPublicUrl(fileName)
-        logoUrl = publicUrl.publicUrl
-      }
-
-      // Update database to 'pending_approval'
-      await supabase.from('bookings').update({
-        client_logo_url: logoUrl,
-        client_brand_name: brandName,
-        client_welcome_message: welcomeMsg,
-        branding_status: 'pending_approval'
-      }).eq('id', booking.id)
+      const form = new FormData()
+      form.append('ref', quoteRef)
+      form.append('brandName', brandName)
+      form.append('welcomeMsg', welcomeMsg)
+      if (logoFile) form.append('logo', logoFile)
+      const res = await adminFetch('/api/portal/branding', { method: 'POST', body: form })
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed')
+      const { logoUrl } = await res.json()
 
       setBrandSuccess(true)
       setBooking({ ...booking, client_logo_url: logoUrl, client_brand_name: brandName, client_welcome_message: welcomeMsg, branding_status: 'pending_approval' })

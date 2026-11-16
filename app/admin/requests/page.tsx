@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../utils/supabase'
 import { Send, MapPin, Users, Calendar, FileText, CheckCircle, ThumbsUp, Sparkles, Headset, X } from 'lucide-react'
+import { adminFetch } from '../../../lib/admin-fetch'
+import { LATE_GRACE_MINUTES } from '../../../lib/pricing'
 
 export default function AdminRequests() {
   const router = useRouter()
@@ -18,7 +20,10 @@ export default function AdminRequests() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isAccepting, setIsAccepting] = useState<string | null>(null)
 
-  const [partnerId, setPartnerId] = useState('')
+  const [partnerIds, setPartnerIds] = useState<string[]>([])
+  const [trips, setTrips] = useState<any[]>([])
+  const [tripId, setTripId] = useState('')
+  const [reliability, setReliability] = useState<Record<string, { jobs: number; onTime: number }>>({})
   const [destination, setDestination] = useState('Mauritius')
   const [serviceType, setServiceType] = useState('Transfer')
   const [travelDate, setTravelDate] = useState('')
@@ -50,6 +55,23 @@ export default function AdminRequests() {
         .order('created_at', { ascending: false })
       if (rData) setRequests(rData)
 
+      // Confirmed trips a request can be attached to (so the accepted job shows the client's flights and hotel on dispatch)
+      const { data: tData } = await supabase
+        .from('bookings').select('quotation_id, booking_ref, customer_name, travel_start').order('travel_start', { ascending: true })
+      if (tData) setTrips(tData)
+
+      // Partner reliability from real jobs: share of completed pickups within the grace period
+      const { data: jobs } = await supabase
+        .from('supplier_bookings').select('partner_id, job_status, driver_minutes_late').not('partner_id', 'is', null)
+      const stats: Record<string, { jobs: number; onTime: number }> = {}
+      for (const j of jobs || []) {
+        if (!['Picked Up', 'Completed'].includes(j.job_status)) continue
+        const st = (stats[j.partner_id] ||= { jobs: 0, onTime: 0 })
+        st.jobs += 1
+        if ((j.driver_minutes_late || 0) <= LATE_GRACE_MINUTES) st.onTime += 1
+      }
+      setReliability(stats)
+
       // 3. Fetch Client Upsell/Concierge Requests
       const { data: cData } = await supabase
         .from('concierge_requests')
@@ -66,23 +88,24 @@ export default function AdminRequests() {
   // --- PARTNER ACTIONS ---
   async function handleSubmitPartnerRequest(e: React.FormEvent) {
     e.preventDefault()
-    if (!partnerId) return alert("Please select a partner.")
-    
-    setIsSubmitting(true)
-    const { error } = await supabase.from('service_requests').insert({
-      partner_id: partnerId,
-      destination,
-      service_type: serviceType,
-      travel_date: travelDate,
-      party_size: parseInt(partySize),
-      details
-    })
+    if (partnerIds.length === 0) return alert("Please select at least one partner.")
 
-    if (error) {
-      alert("Failed to send request: " + error.message)
-    } else {
-      alert("Service request sent to partner successfully!")
+    setIsSubmitting(true)
+    const trip = trips.find(t => String(t.quotation_id) === tripId)
+    const res = await adminFetch('/api/requests/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        partnerIds, destination, serviceType, travelDate, partySize: parseInt(partySize), details,
+        quotationId: trip ? trip.quotation_id : null,
+      }),
+    })
+    if (res.ok) {
+      const { count, competitive } = await res.json()
+      alert(competitive ? `Sent to ${count} partners. They will compete: accepting one quote closes the others.` : "Service request sent to the partner.")
       window.location.reload()
+    } else {
+      const { error } = await res.json().catch(() => ({ error: 'Failed to send request' }))
+      alert(error)
     }
     setIsSubmitting(false)
   }
@@ -93,20 +116,13 @@ export default function AdminRequests() {
 
     try {
       const quote = req.partner_quotations[0]
-      const res = await fetch('/api/requests/accept-quote', {
+      const res = await adminFetch('/api/requests/accept-quote', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requestId: req.id,
-          quoteId: quote.id,
-          partnerId: req.partner_id,
-          serviceDescription: `${req.service_type} - ${req.destination}`,
-          travelDate: req.travel_date
-        })
+        body: JSON.stringify({ requestId: req.id, quoteId: quote.id }),
       })
 
       if (res.ok) {
-        alert("Quote accepted! The job has been added to the Dispatch Board.")
+        alert("Quote accepted! The job is on the Dispatch Board and the partner has been told. Competing partners were notified politely.")
         window.location.reload()
       } else {
         const error = await res.json()
@@ -217,13 +233,37 @@ export default function AdminRequests() {
               <h2 className="font-serif text-2xl text-[#1B4D3E] mb-6">Send New Request</h2>
               <form onSubmit={handleSubmitPartnerRequest} className="space-y-4">
                 <div>
-                  <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Assign to Partner *</label>
-                  <select required value={partnerId} onChange={(e) => setPartnerId(e.target.value)} className="w-full border border-[#E5DFD3] p-2 text-sm focus:outline-none focus:border-[#C9A961]">
-                    <option value="">Select partner...</option>
-                    {partners.map(p => <option key={p.id} value={p.id}>{p.company_name}</option>)}
+                  <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Send to Partner(s) *</label>
+                  <div className="border border-[#E5DFD3] max-h-40 overflow-auto divide-y divide-[#E5DFD3]">
+                    {partners.map(p => {
+                      const st = reliability[p.id]
+                      return (
+                        <label key={p.id} className="flex items-center justify-between gap-2 p-2 text-sm cursor-pointer hover:bg-[#FAF7F0]">
+                          <span className="flex items-center gap-2">
+                            <input type="checkbox" checked={partnerIds.includes(p.id)}
+                              onChange={(e) => setPartnerIds(prev => e.target.checked ? [...prev, p.id] : prev.filter(x => x !== p.id))} />
+                            {p.company_name}
+                          </span>
+                          <span className="text-[10px] text-gray-500">{st && st.jobs > 0 ? `${Math.round(100 * st.onTime / st.jobs)}% on time` : 'new'}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  {partnerIds.length > 1 && <p className="text-[11px] text-[#1B4D3E] mt-1">Competitive request: {partnerIds.length} partners will quote. Accepting one closes the rest.</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Attach to client trip (optional)</label>
+                  <select value={tripId} onChange={(e) => {
+                    setTripId(e.target.value)
+                    const t = trips.find(x => String(x.quotation_id) === e.target.value)
+                    if (t?.travel_start) setTravelDate(String(t.travel_start).slice(0, 10))
+                  }} className="w-full border border-[#E5DFD3] p-2 text-sm focus:outline-none focus:border-[#C9A961]">
+                    <option value="">No client trip (stand-alone service)</option>
+                    {trips.map(t => <option key={t.quotation_id} value={String(t.quotation_id)}>{t.booking_ref} | {t.customer_name} | {String(t.travel_start).slice(0, 10)}</option>)}
                   </select>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs tracking-widest uppercase text-[#1B4D3E] mb-1 font-medium">Destination</label>
@@ -273,13 +313,24 @@ export default function AdminRequests() {
             <div className="bg-white shadow-sm border border-[#E5DFD3] overflow-hidden">
               <div className="p-4 bg-[#FAF7F0] border-b border-[#E5DFD3] font-serif text-lg text-[#1B4D3E]">Recent Partner Requests</div>
               <div className="divide-y divide-[#E5DFD3]">
-                {requests.length === 0 ? <p className="p-6 text-gray-500">No requests sent yet.</p> : requests.map(req => (
+                {requests.length === 0 ? <p className="p-6 text-gray-500">No requests sent yet.</p> : requests.map(req => {
+                  const myQuote = req.partner_quotations?.[0]
+                  const rivals = req.rfq_group ? requests.filter(r => r.rfq_group === req.rfq_group && r.partner_quotations?.[0] && r.partner_quotations[0].currency === myQuote?.currency) : []
+                  const best = rivals.length > 1 && myQuote ? Math.min(...rivals.map(r => Number(r.partner_quotations[0].net_amount))) : null
+                  const premium = best && myQuote ? Math.round((Number(myQuote.net_amount) / best - 1) * 100) : null
+                  const st = reliability[req.partner_id]
+                  return (
                   <div key={req.id} className="p-6 hover:bg-[#FAF7F0] transition">
                     <div className="flex justify-between items-start mb-2">
-                      <div className="font-medium text-[#1B4D3E]">{req.partners?.company_name}</div>
+                      <div className="font-medium text-[#1B4D3E]">
+                        {req.partners?.company_name}
+                        <span className="ml-2 text-[10px] text-gray-500 font-normal">{st && st.jobs > 0 ? `${Math.round(100 * st.onTime / st.jobs)}% on time (${st.jobs} jobs)` : 'new partner'}</span>
+                        {req.rfq_group && <span className="ml-2 text-[10px] uppercase tracking-widest bg-[#C9A961]/20 text-[#1B4D3E] px-2 py-0.5 rounded-sm font-bold">Competing</span>}
+                      </div>
                       <span className={`text-[10px] uppercase tracking-widest px-2 py-1 rounded-sm font-bold ${
                         req.status === 'pending' ? 'bg-orange-100 text-orange-700' : 
                         req.status === 'quoted' ? 'bg-blue-100 text-blue-700' : 
+                        req.status === 'closed' ? 'bg-gray-100 text-gray-500' :
                         'bg-green-100 text-green-700'
                       }`}>
                         {req.status}
@@ -305,9 +356,12 @@ export default function AdminRequests() {
                               {req.partner_quotations[0].currency === 'MUR' ? 'Rs ' : req.partner_quotations[0].currency === 'EUR' ? '€' : '$'} 
                               {req.partner_quotations[0].net_amount.toLocaleString()}
                             </div>
+                            {best !== null && (premium === 0
+                              ? <div className="mt-1 text-[10px] uppercase tracking-widest font-bold text-green-700">Best price of {rivals.length} quotes</div>
+                              : <div className="mt-1 text-[10px] uppercase tracking-widest font-bold text-gray-500">+{premium}% vs best of {rivals.length} quotes</div>)}
                           </div>
                           
-                          {req.status !== 'accepted' && (
+                          {req.status !== 'accepted' && req.status !== 'closed' && (
                             <button 
                               onClick={() => handleAcceptPartnerQuote(req)}
                               disabled={isAccepting === req.id}
@@ -329,7 +383,8 @@ export default function AdminRequests() {
                       </div>
                     )}
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </div>
