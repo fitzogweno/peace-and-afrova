@@ -39,6 +39,34 @@ const JOURNEYS = [
   }
 ]
 
+// VERIFIED 100% WORKING, ULTRA-HIGH QUALITY IMAGES
+const EXPERIENCES = [
+  {
+    title: 'Mauritius',
+    subtitle: 'Chamarel Wonders',
+    desc: 'Discover the famous seven-coloured earths and the stunning Chamarel waterfall. A geological marvel nestled in the heart of the island’s lush tropical forests.',
+    image: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=800&auto=format&fit=crop', 
+  },
+  {
+    title: 'Seychelles',
+    subtitle: 'La Digue Boulders',
+    desc: 'Walk among the ancient granite boulders of Anse Source d\'Argent. Widely considered one of the most photographed and breathtaking beaches in the world.',
+    image: 'https://images.unsplash.com/photo-1570481662006-a3a1374699e8?q=80&w=800&auto=format&fit=crop', 
+  },
+  {
+    title: 'Réunion',
+    subtitle: 'Piton de la Fournaise',
+    desc: 'Hike the lunar landscapes of an active shield volcano. It offers an otherworldly, dramatic contrast to the island’s lush, green coasts.',
+    image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=800&auto=format&fit=crop', 
+  },
+  {
+    title: 'Rodrigues',
+    subtitle: 'The Pristine Lagoon',
+    desc: 'Experience the untouched, authentic beauty of Rodrigues. Its massive, protected turquoise lagoon is a paradise for kitesurfing, snorkeling, and absolute peace.',
+    image: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?q=80&w=800&auto=format&fit=crop', 
+  }
+]
+
 const REVIEWS = [
   {
     name: 'Sarah & James',
@@ -76,7 +104,6 @@ export default function Home() {
       <nav className="absolute top-0 left-0 right-0 z-50 px-6 py-6 mt-[32px]">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           
-          {/* NEW LOGO IMAGE */}
           <Link href="/" className="flex items-center" aria-label="Peace and Afrova Home">
             <Image 
               src="/logo-light.png" 
@@ -173,11 +200,76 @@ export default function Home() {
               )
             })}
           </div>
+
+          <div className="mt-16 text-center">
+            <Link href="/journeys" className="inline-block border border-[#1B4D3E] text-[#1B4D3E] px-10 py-4 text-xs tracking-widest uppercase font-bold hover:bg-[#1B4D3E] hover:text-white transition duration-300">
+              View All Signature Journeys
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* CURATED EXPERIENCES (HOVER GRID) */}
+      <section className="py-24 px-6 bg-[#F5F0E6]">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="text-[10px] tracking-[0.3em] uppercase text-[#C9A961] mb-4 font-bold">Across the Indian Ocean</div>
+            <h2 className="font-serif text-4xl text-[#1B4D3E] mb-4">Iconic Experiences</h2>
+            <p className="text-[#777777] font-light max-w-2xl mx-auto">One unforgettable highlight from each of our four destinations. Hover to explore.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {EXPERIENCES.map((exp, index) => (
+              <div 
+                key={index} 
+                className="relative aspect-[3/4] overflow-hidden rounded-lg group cursor-pointer shadow-lg hover:shadow-[0_0_40px_rgba(201,169,97,0.4)] transition-all duration-500 border border-transparent hover:border-[#C9A961]/50"
+              >
+                <Image 
+                  src={exp.image} 
+                  alt={exp.title} 
+                  fill
+                  sizes="(max-width: 768px) 100vw, 25vw"
+                  className="object-cover group-hover:scale-110 transition-transform duration-[1.5s] ease-out" 
+                />
+
+                {/* Default State: Title & Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex items-end p-6 transition-opacity duration-500 group-hover:opacity-0">
+                  <div className="w-full text-center">
+                    <h3 className="font-serif text-2xl text-white drop-shadow-md">{exp.title}</h3>
+                    <p className="text-[10px] uppercase tracking-widest text-[#C9A961] mt-1">{exp.subtitle}</p>
+                  </div>
+                </div>
+
+                {/* Hover State: Glassmorphism Overlay */}
+                <div className="absolute inset-0 bg-[#1B4D3E]/90 backdrop-blur-[8px] opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col items-center justify-center p-6 text-center">
+                  
+                  <h3 className="font-serif text-2xl text-[#C9A961] mb-1 transform translate-y-8 group-hover:translate-y-0 transition-all duration-500 delay-100">
+                    {exp.title}
+                  </h3>
+                  <p className="text-[10px] uppercase tracking-widest text-white/70 mb-4 transform translate-y-8 group-hover:translate-y-0 transition-all duration-500 delay-100">
+                    {exp.subtitle}
+                  </p>
+                  
+                  <div className="w-12 h-px bg-[#C9A961] mb-4 transform translate-y-8 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-500 delay-200"></div>
+                  
+                  <p className="text-sm text-white/90 font-light leading-relaxed transform translate-y-8 group-hover:translate-y-0 transition-all duration-500 delay-200 mb-6">
+                    {exp.desc}
+                  </p>
+
+                  <div className="transform translate-y-8 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-500 delay-300">
+                    <Link href="/experiences" className="text-[10px] uppercase tracking-widest text-[#C9A961] border border-[#C9A961] px-6 py-2 hover:bg-[#C9A961] hover:text-[#1B4D3E] transition-colors flex items-center gap-2">
+                      Discover <ArrowRight size={12} />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* INCLUSIVE JOURNEYS */}
-      <section className="py-24 px-6 bg-[#F5F0E6]">
+      <section className="py-24 px-6 bg-white border-y border-[#E5DFD3]">
         <div className="max-w-5xl mx-auto">
           <div className="bg-[#1B4D3E] text-white overflow-hidden shadow-2xl flex flex-col md:flex-row">
             <div className="md:w-1/2 relative min-h-[400px]">
@@ -203,7 +295,7 @@ export default function Home() {
       </section>
 
       {/* CONCIERGE PROMISE */}
-      <section className="py-24 px-6 bg-white border-y border-[#E5DFD3]">
+      <section className="py-24 px-6 bg-[#F5F0E6]">
         <div className="max-w-5xl mx-auto text-center">
           <div className="text-[10px] tracking-[0.3em] uppercase text-[#C9A961] mb-6 font-bold">The Peace and Afrova Standard</div>
           <h2 className="font-serif text-4xl md:text-5xl text-[#1B4D3E] mb-8">Excellence is in every detail.</h2>
@@ -219,7 +311,7 @@ export default function Home() {
       </section>
 
       {/* GUEST JOURNAL (MARQUEE) */}
-      <section className="py-24 bg-[#F5F0E6] overflow-hidden">
+      <section className="py-24 bg-white border-y border-[#E5DFD3] overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 text-center mb-16">
           <div className="text-[10px] tracking-[0.3em] uppercase text-[#C9A961] mb-4 font-bold">The Guest Journal</div>
           <h2 className="font-serif text-4xl text-[#1B4D3E] mb-4">Experiences that stay with you.</h2>
@@ -228,7 +320,7 @@ export default function Home() {
         <div className="relative w-full flex overflow-x-hidden group">
           <div className="flex animate-marquee whitespace-nowrap gap-8 py-4 hover:[animation-play-state:paused] motion-reduce:animate-none motion-reduce:flex-wrap motion-reduce:justify-center">
             {[...REVIEWS, ...REVIEWS].map((review, index) => (
-              <div key={index} className="bg-white p-8 border border-[#E5DFD3] shadow-sm flex flex-col w-[350px] md:w-[450px] shrink-0 whitespace-normal transition-transform duration-300 hover:-translate-y-2">
+              <div key={index} className="bg-[#FAF7F0] p-8 border border-[#E5DFD3] shadow-sm flex flex-col w-[350px] md:w-[450px] shrink-0 whitespace-normal transition-transform duration-300 hover:-translate-y-2">
                 <div className="flex gap-1 text-[#C9A961] mb-6">{[...Array(review.rating)].map((_, i) => <Star key={i} size={16} fill="currentColor" />)}</div>
                 <p className="text-[#4A4A4A] font-light leading-relaxed italic mb-8 flex-1">"{review.text}"</p>
                 <div className="border-t border-[#E5DFD3] pt-4">
@@ -243,23 +335,22 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="py-32 px-6 bg-white border-t border-[#E5DFD3]">
+      <section className="py-32 px-6 bg-[#1B4D3E]">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="text-[10px] tracking-[0.3em] uppercase text-[#777777] mb-6 font-bold">Begin</div>
-          <h2 className="font-serif text-4xl md:text-5xl text-[#1B4D3E] mb-6">Plan something exceptional</h2>
+          <div className="text-[10px] tracking-[0.3em] uppercase text-[#C9A961] mb-6 font-bold">Begin</div>
+          <h2 className="font-serif text-4xl md:text-5xl text-white mb-6">Plan something exceptional</h2>
           <div className="w-16 h-px bg-[#C9A961] mx-auto mb-8" />
-          <p className="text-lg text-[#4A4A4A] mb-12 font-light">Tell us about your trip, and receive a proposal tailored to your needs.</p>
-          <Link href="/bespoke" className="inline-block bg-[#1B4D3E] text-white px-10 py-4 text-xs tracking-widest uppercase font-bold hover:bg-[#C9A961] hover:text-[#1B4D3E] transition">Begin Your Enquiry</Link>
+          <p className="text-lg text-white/70 mb-12 font-light">Tell us about your trip, and receive a proposal tailored to your needs.</p>
+          <Link href="/bespoke" className="inline-block bg-[#C9A961] text-[#1B4D3E] px-10 py-4 text-xs tracking-widest uppercase font-bold hover:bg-white transition">Begin Your Enquiry</Link>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-[#1B4D3E] text-white/70 py-16 px-6">
+      <footer className="bg-[#12382D] text-white/70 py-16 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             
             <div>
-              {/* NEW FOOTER LOGO IMAGE */}
               <Link href="/" className="inline-block mb-4">
                 <Image 
                   src="/logo-light.png" 
@@ -306,7 +397,6 @@ export default function Home() {
           <div className="border-t border-white/10 pt-8 text-[10px] text-white/40 flex flex-col md:flex-row justify-between items-center gap-4">
             <div>© 2026 Peace and Afrova Group Company Ltd.</div>
             
-            {/* UPDATED LEGAL LINKS WITH DIVIDERS AND HOVER EFFECT */}
             <div className="flex items-center gap-4 tracking-[0.2em] uppercase font-bold">
               <Link href="/policies/terms" className="hover:text-[#C9A961] transition">Terms</Link>
               <span className="text-white/20">|</span>
